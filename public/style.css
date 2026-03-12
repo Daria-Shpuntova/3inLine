@@ -1,0 +1,525 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    max-width: 800px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* Шапка игры */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 15px;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.player-info {
+    display: flex;
+    gap: 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.lives-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    position: relative;
+}
+
+.lives-timer {
+    font-size: 14px;
+    background: rgba(0,0,0,0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Выбор размера поля */
+.board-size-selector {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.size-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #e0e0e0;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.size-btn.active {
+    background: #667eea;
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Игровое поле */
+.game-board {
+    background: #f0f0f0;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    min-height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.board-grid {
+    display: inline-grid;
+    gap: 4px;
+    background: #bbada0;
+    padding: 8px;
+    border-radius: 10px;
+}
+
+.cell {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.cell:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.cell.selected {
+    border: 3px solid gold;
+    box-shadow: 0 0 15px gold;
+}
+
+/* Цвета кристаллов */
+.crystal-0 { background: #ff6b6b; } /* Красный */
+.crystal-1 { background: #cd17e1; } /* Бирюзовый */
+.crystal-2 { background: #45b7d1; } /* Голубой */
+.crystal-3 { background: #089652; } /* Зеленый */
+.crystal-4 { background: #ffc51a; } /* Желтый */
+.crystal-5 { background: #dfe6e9; } /* Серый */
+
+/* Статистика */
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+    display: block;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Бонусы */
+.bonuses {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.bonus-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.bonus-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-color: #667eea;
+}
+
+.bonus-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bonus-icon {
+    font-size: 30px;
+    margin-bottom: 5px;
+}
+
+.bonus-name {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 3px;
+}
+
+.bonus-count {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.bonus-price {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff6b6b;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+/* Кнопки действий */
+.game-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #764ba2;
+}
+
+.btn-secondary {
+    background: #f093fb;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #f5576c;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Сообщения */
+.game-message {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: bold;
+    min-height: 40px;
+}
+
+.game-message.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.game-message.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.game-message.info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+    .cell {
+        width: 35px;
+        height: 35px;
+        font-size: 20px;
+    }
+
+    .bonuses {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+/* Добавить в style.css */
+.theme-selector {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.theme-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(5px);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.theme-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
+}
+
+.theme-btn.active {
+    background: rgba(255,255,255,0.4);
+    border-color: gold;
+}
+
+/* Обновляем стиль игрового поля для работы с фоновыми изображениями */
+.game-board {
+    background-size: cover !important;
+    background-position: center !important;
+    transition: background-image 0.5s ease;
+}
+
+/* Стили для кристаллов с картинками */
+.cell {
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Убираем старые цветные фоны */
+.crystal-0, .crystal-1, .crystal-2, .crystal-3, .crystal-4, .crystal-5 {
+    background: transparent !important;
+}
+
+/* Добавить в style.css */
+
+/* Анимации для клеток */
+.cell {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: visible !important;
+}
+
+.cell.selected {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.05); filter: brightness(1.2); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Эффект свечения при совпадении */
+.cell.match-highlight {
+    animation: glow 0.3s ease;
+}
+
+@keyframes glow {
+    0% { filter: brightness(1); transform: scale(1); }
+    50% { filter: brightness(1.5); transform: scale(1.1); }
+    100% { filter: brightness(1); transform: scale(1); }
+}
+
+/* Частицы для взрывов */
+.particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2000;
+    transition: all 0.5s ease-out;
+}
+
+/* Анимация появления новых кристаллов */
+.cell {
+    animation: appear 0.3s ease;
+}
+
+@keyframes appear {
+    from {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+/* Анимация падения */
+.cell.falling {
+    transition: top 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Добавь в style.css */
+.cell {
+    transition: transform 0.2s ease, opacity 0.2s ease, background-image 0.2s ease;
+    will-change: transform, opacity;
+}
+
+.board-grid {
+    position: relative;
+}
+
+/* Анимация появления */
+@keyframes appear {
+    from {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.cell {
+    animation: appear 0.2s ease;
+}
+
+/* Эффект наведения */
+.cell:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+    z-index: 10;
+}
+
+.cell.selected {
+    animation: pulse 0.5s infinite;
+    border: 3px solid gold;
+    box-shadow: 0 0 20px gold;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.floating-crystal {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    pointer-events: none;
+    filter: brightness(1.2);
+    will-change: transform;
+}
+
+.cell {
+    transition: opacity 0.2s ease;
+    will-change: opacity;
+}
+
+.cell {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.cell:active {
+    cursor: grabbing;
+}
+
+.cell.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+
+
+.falling-crystal {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    filter: brightness(1.1);
+    pointer-events: none;
+    will-change: top;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+.cell {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    will-change: opacity, transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Контейнер для анимаций */
+#gameBoard {
+    position: relative;
+    overflow: hidden;  /* Важно! Обрезает всё, что выходит за пределы */
+    border-radius: 15px;
+}
+
+/* Улучшенный drag clone */
+.drag-clone {
+    filter: brightness(1.2);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+    border-radius: 8px;
+    transform: scale(1.1) translateZ(0);
+    will-change: left, top;
+    backface-visibility: hidden;
+}
+
+/* Подсветка цели */
+.drop-target {
+    filter: brightness(1.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px gold;
+    transition: all 0.1s ease;
+}
+
+

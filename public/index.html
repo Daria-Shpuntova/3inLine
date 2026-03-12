@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Три в ряд с бонусами</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="game-container">
+  <!-- Шапка игры -->
+  <div class="game-header">
+    <div class="player-info">
+      <div class="player-name" id="playerName">Игрок</div>
+      <div class="coins" id="coins">💰 100</div>
+    </div>
+    <div class="lives-container" id="livesContainer">
+      ❤️ <span id="lives">5</span>/5
+      <div class="lives-timer" id="livesTimer">30:00</div>
+    </div>
+  </div>
+  <div class="theme-selector">
+    <button class="theme-btn" data-theme="forest">🌲 Лес</button>
+    <button class="theme-btn" data-theme="space">🚀 Космос</button>
+    <button class="theme-btn" data-theme="magic">✨ Магия</button>
+  </div>
+
+
+  <!-- Выбор размера поля -->
+  <div class="board-size-selector">
+    <button class="size-btn" data-size="6">6x6</button>
+    <button class="size-btn active" data-size="8">8x8</button>
+    <button class="size-btn" data-size="10">10x10</button>
+  </div>
+
+  <!-- Игровое поле -->
+  <div class="game-board" id="gameBoard"></div>
+
+  <!-- Статистика игры -->
+  <div class="game-stats">
+    <div class="stat">
+      <span class="stat-label">Счет:</span>
+      <span class="stat-value" id="score">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Цель:</span>
+      <span class="stat-value" id="goal">500</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Ходы:</span>
+      <span class="stat-value" id="moves">20</span>
+    </div>
+  </div>
+
+  <!-- Бонусы -->
+  <div class="bonuses">
+    <div class="bonus-card" data-bonus="lightning">
+      <div class="bonus-icon">⚡</div>
+      <div class="bonus-name">Молния</div>
+      <div class="bonus-count" id="lightningCount">0</div>
+      <div class="bonus-price">150</div>
+    </div>
+    <div class="bonus-card" data-bonus="cross">
+      <div class="bonus-icon">⚡⚡</div>
+      <div class="bonus-name">Крест</div>
+      <div class="bonus-count" id="crossCount">0</div>
+      <div class="bonus-price">250</div>
+    </div>
+    <div class="bonus-card" data-bonus="bomb">
+      <div class="bonus-icon">💣</div>
+      <div class="bonus-name">Бомба</div>
+      <div class="bonus-count" id="bombCount">0</div>
+      <div class="bonus-price">100</div>
+    </div>
+    <div class="bonus-card" data-bonus="rainbow">
+      <div class="bonus-icon">🌈</div>
+      <div class="bonus-name">Радуга</div>
+      <div class="bonus-count" id="rainbowCount">0</div>
+      <div class="bonus-price">200</div>
+    </div>
+  </div>
+
+  <!-- Кнопки действий -->
+  <div class="game-actions">
+    <button class="btn btn-primary" id="newGameBtn">Новая игра</button>
+    <button class="btn btn-secondary" id="buyMovesBtn">+5 ходов (реклама)</button>
+  </div>
+
+  <!-- Сообщения -->
+  <div class="game-message" id="gameMessage"></div>
+</div>
+
+<!-- Подключение скриптов -->
+<script src="api.js"></script>
+<script src="bonuses.js"></script>
+<script src="board.js"></script>
+<script src="animations.js"></script>
+<script src="themes.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
