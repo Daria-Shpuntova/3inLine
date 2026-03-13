@@ -1,5 +1,10 @@
+// Match3Game.js - основной класс игры (исправленная версия)
+// Match3Game.js - основной класс игры
 class Match3Game {
     constructor() {
+        console.log('Match3Game constructor started');
+
+        // Проверяем наличие API
         if (typeof api === 'undefined') {
             console.error('API не загружен! Ждем...');
             setTimeout(() => this.init(), 100);
@@ -7,9 +12,10 @@ class Match3Game {
         }
 
         this.api = api;
-        this.boardSystem = new Board(this);
+        this.boardSystem = null;
         this.bonusSystem = new BonusSystem(this);
 
+        // Базовые настройки
         this.boardSize = 8;
         this.board = [];
         this.score = 0;
@@ -25,147 +31,288 @@ class Match3Game {
         };
 
         this.selectedCell = null;
-        this.gameActive = true;
+        this.gameActive = true; // Важно: сразу устанавливаем в true
         this.lifeTimer = null;
-        this.animations = new AnimationManager(this);
+        this.animations = null;
         this.dragDrop = null;
         this.isInitialized = false;
-        this.isProcessing = false; // Флаг для предотвращения множественных вызовов
+        this.isProcessing = false;
+        this.matchChainInProgress = false;
 
-        console.log('Match3Game создан');
-        this.init();
+        console.log('Match3Game создан, gameActive =', this.gameActive);
+
+        // Запускаем инициализацию
+        setTimeout(() => this.init(), 50);
     }
 
     async init() {
-        if (this.isInitialized) return;
+        if (this.isInitialized) {
+            console.log('Already initialized');
+            return;
+        }
 
-        console.log('init() начат');
-        this.isInitialized = true;
+        console.log('init() started, gameActive =', this.gameActive);
 
-        const username = 'player_' + Math.floor(Math.random() * 1000);
-        await this.api.login(username);
-        await this.loadGameState();
+        try {
+            // Инициализируем системы
+            this.boardSystem = new Board(this);
+            this.animations = new AnimationManager(this);
 
-        this.createBoard();
-        this.startLifeTimer();
-
-        this.dragDrop = new DragDropManager(this);
-        this.render();
-        this.setupEventListeners();
-
-        console.log('init() завершен');
-    }
-
-    async loadGameState() {
-        const result = await this.api.getGameState();
-        if (result.success) {
-            this.lives = result.data.lives;
-            this.coins = result.data.coins;
-            this.inventory = result.data.inventory || this.inventory;
-
-            if (result.data.recoveredLives > 0) {
-                this.showMessage(`Восстановлено ${result.data.recoveredLives} ❤️`, 'info');
+            // Загружаем состояние
+            const username = 'player_' + Math.floor(Math.random() * 1000);
+            if (this.api) {
+                await this.api.login(username);
+                await this.loadGameState();
             }
+
+            // Создаем поле
+            this.createBoard();
+
+            // Запускаем таймер жизней
+            this.startLifeTimer();
+
+            // Рендерим поле
+            this.render();
+
+            // Инициализируем Drag&Drop
+            this.dragDrop = new DragDropManager(this);
+            this.dragDrop.init();
+
+            // Настраиваем обработчики событий
+            this.setupEventListeners();
+
+            this.isInitialized = true;
+            this.gameActive = true; // Убеждаемся, что игра активна
+            console.log('init() completed successfully, gameActive =', this.gameActive);
+
+        } catch (error) {
+            console.error('Init error:', error);
+            this.gameActive = true; // Даже при ошибке пытаемся сделать игру активной
         }
     }
 
     createBoard() {
+        console.log('Creating board with size:', this.boardSize);
         this.board = this.boardSystem.createBoard(this.boardSize);
+        console.log('Board created:', this.board);
     }
 
-    // Главный метод для обмена
+    async loadGameState() {
+        try {
+            const result = await this.api.getGameState();
+            if (result && result.success) {
+                this.lives = result.data.lives || 5;
+                this.coins = result.data.coins || 100;
+                this.inventory = result.data.inventory || this.inventory;
+            }
+        } catch (error) {
+            console.warn('Could not load game state:', error);
+        }
+    }
+
+    // ИСПРАВЛЕННЫЙ метод trySwap
     trySwap(x1, y1, x2, y2) {
-        // Проверяем, можно ли обменять
+        console.log('trySwap called:', x1, y1, '->', x2, y2, 'gameActive=', this.gameActive);
+
+        // Проверяем, можно ли обменивать
+        if (this.animations?.isAnimating) {
+            console.log('Animating, cannot swap');
+            return false;
+        }
+
+        if (this.isProcessing || this.matchChainInProgress) {
+            console.log('Processing, cannot swap');
+            return false;
+        }
+
+        if (!this.gameActive) {
+            console.log('Game not active');
+            this.showMessage('Игра не активна', 'error');
+            return false;
+        }
+
+        if (this.lives <= 0) {
+            this.showMessage('Нет жизней!', 'error');
+            return false;
+        }
+
+        if (this.moves <= 0) {
+            this.showMessage('Нет ходов!', 'error');
+            return false;
+        }
+
+        // Проверяем, приведет ли обмен к совпадениям
         if (!this.boardSystem.hasMatchesAfterSwap(x1, y1, x2, y2)) {
             this.showMessage('Нет совпадений!', 'error');
-            return;
+            return false;
         }
 
-        if (this.animations.isAnimating || this.isProcessing) {
-            console.log('Анимация уже идет, ждем');
-            return;
-        }
+        console.log('Swap is valid, proceeding...');
 
         this.isProcessing = true;
-        console.log('Начинаем обмен', x1, y1, '->', x2, y2);
+        this.matchChainInProgress = true;
 
         // Уменьшаем ходы
         this.moves--;
         this.updateUI();
 
+        // Выполняем обмен в данных
+        this.boardSystem.swap(x1, y1, x2, y2);
+
         // Анимируем обмен
         this.animations.animateSwap(x1, y1, x2, y2, () => {
-            // После обмена проверяем совпадения
-            this.processMatchesAfterSwap();
+            // После анимации начинаем обработку совпадений
+            this.processMatchChain();
         });
+
+        return true;
     }
 
-    processMatchesAfterSwap() {
-        const matches = this.boardSystem.findAllMatches();
+    // ИСПРАВЛЕННЫЙ метод processMatchChain
+    async processMatchChain() {
+        console.log('Starting match chain');
+        let hasMatches = true;
+        let chainLength = 0;
+        const maxChainLength = 10;
 
-        if (matches.length === 0) {
-            console.log('Нет совпадений, завершаем цепочку');
-            this.isProcessing = false;
-            this.checkGameStatus();
-            this.render();
-            return;
-        }
+        while (hasMatches && chainLength < maxChainLength) {
+            chainLength++;
 
-        console.log('Найдены совпадения:', matches.length);
+            // Находим все совпадения
+            const matches = this.boardSystem.findAllMatches();
 
-        // Начисляем очки
-        this.addScore(matches.length * 10);
-
-        // Анимируем уничтожение
-        this.animations.animateDestroy(matches, () => {
-            console.log('Уничтожение завершено, помечаем клетки как пустые');
-
-            // Помечаем как пустые
-            matches.forEach(({ x, y }) => {
-                this.board[y][x] = -1;
-            });
-
-            // Подготавливаем падение
-            const fallData = this.prepareFallAnimation();
-            console.log('Подготовлены падения:', fallData.length);
-
-            if (fallData.length === 0) {
-                console.log('Нет падений, проверяем новые совпадения');
-                setTimeout(() => {
-                    this.processMatchesAfterSwap();
-                }, 50);
-                return;
+            if (matches.length === 0) {
+                hasMatches = false;
+                break;
             }
 
-            // Анимируем падение
-            this.animations.animateFall(fallData, () => {
-                console.log('Падение завершено, callback вызван');
+            console.log(`Chain ${chainLength}: found ${matches.length} matches`);
 
-                // Применяем гравитацию
+            // Начисляем очки
+            this.addScore(matches.length * 10 * chainLength);
+
+            // Анимируем уничтожение
+            await this.animateAndClearMatches(matches);
+
+            // Применяем гравитацию к данным
+            this.boardSystem.applyGravity();
+
+            // Заполняем пустоты новыми кристаллами
+            this.boardSystem.fillEmptyCells();
+
+            // Обновляем визуально
+            this.softUpdate();
+
+            // Небольшая пауза для визуального восприятия
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        console.log('Match chain completed');
+        this.matchChainInProgress = false;
+        this.isProcessing = false;
+
+        // Снимаем выделение
+        this.selectedCell = null;
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+
+        // Проверяем наличие возможных ходов
+        if (!this.hasAnyPossibleMove()) {
+            console.log('No possible moves, shuffling...');
+            this.showMessage('Нет ходов! Перемешиваем...', 'info');
+            this.shuffleBoard();
+        } else {
+            // Важно! Убеждаемся, что игра снова активна
+            this.gameActive = true;
+        }
+
+        this.checkGameStatus();
+    }
+
+    // Также добавим метод для принудительного сброса анимации
+    resetAnimationState() {
+        if (this.animations) {
+            this.animations.isAnimating = false;
+        }
+        this.isProcessing = false;
+        this.matchChainInProgress = false;
+        this.gameActive = true;
+
+        // Восстанавливаем видимость всех клеток
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.style.opacity = '1';
+            cell.style.transform = '';
+            cell.style.transition = '';
+        });
+
+        console.log('Animation state reset');
+    }
+
+
+    // Вспомогательный метод для анимации
+    animateAndClearMatches(matches) {
+        return new Promise((resolve) => {
+            // Помечаем совпадающие клетки как пустые
+            matches.forEach(({x, y}) => {
+                if (this.board[y] && this.board[y][x] !== undefined) {
+                    this.board[y][x] = -1;
+                }
+            });
+
+            // Анимируем уничтожение
+            this.animations.animateDestroy(matches, () => {
+                // Применяем гравитацию к данным
                 this.boardSystem.applyGravity();
 
-                // ВАЖНО: проверяем новые совпадения после падения
-                console.log('Проверяем новые совпадения после падения');
-                setTimeout(() => {
-                    this.processMatchesAfterSwap();
-                }, 50);
+                // Подготавливаем данные для падения
+                const fallData = this.prepareFallAnimation();
+
+                if (fallData.length > 0) {
+                    this.animations.animateFall(fallData, () => {
+                        // После падения заполняем пустоты БЕЗ создания совпадений
+                        this.boardSystem.fillEmptyCells();
+                        this.softUpdate();
+                        resolve();
+                    });
+                } else {
+                    // Если нет падения, просто заполняем пустоты
+                    this.boardSystem.fillEmptyCells();
+                    this.softUpdate();
+                    resolve();
+                }
             });
         });
     }
 
-    // ОБНОВЛЕННЫЙ метод prepareFallAnimation
+    debugBoard() {
+        console.log('Current board:');
+        for (let y = 0; y < this.boardSize; y++) {
+            let row = '';
+            for (let x = 0; x < this.boardSize; x++) {
+                row += (this.board[y][x] === -1 ? '⚪' : this.board[y][x]) + ' ';
+            }
+            console.log(row);
+        }
+
+        const matches = this.boardSystem.findAllMatches();
+        console.log('Current matches:', matches.length);
+
+        return { board: this.board, matches };
+    }
+
+    // Подготовка данных для анимации падения
     prepareFallAnimation() {
         const fallData = [];
+        const size = this.boardSize;
 
-        for (let x = 0; x < this.boardSize; x++) {
+        for (let x = 0; x < size; x++) {
             let emptySpaces = 0;
 
-            // Сначала считаем пустые места снизу вверх
-            for (let y = this.boardSize - 1; y >= 0; y--) {
+            // Считаем пустые места снизу вверх
+            for (let y = size - 1; y >= 0; y--) {
                 if (this.board[y][x] === -1) {
                     emptySpaces++;
                 } else if (emptySpaces > 0) {
-                    // Этот кристалл должен упасть вниз
+                    // Этот кристалл должен упасть
                     fallData.push({
                         fromY: y,
                         toY: y + emptySpaces,
@@ -173,102 +320,121 @@ class Match3Game {
                         color: this.board[y][x]
                     });
 
-                    // Временно помечаем как пустой, чтобы вышележащие тоже упали
+                    // Временно помечаем как пустое
                     this.board[y][x] = -1;
                 }
             }
-
-            // Заполняем сверху новыми кристаллами
-            for (let y = 0; y < emptySpaces; y++) {
-                this.board[y][x] = Math.floor(Math.random() * 6);
-            }
         }
 
-        console.log('Создано падений:', fallData.length);
         return fallData;
     }
 
+    // Проверка наличия возможных ходов
+    hasAnyPossibleMove() {
+        const size = this.boardSize;
 
-    // НОВЫЙ метод для принудительной проверки совпадений
-    checkForMatches() {
-        const matches = this.boardSystem.findAllMatches();
-
-        if (matches.length > 0) {
-            console.log('Найдены новые совпадения при проверке');
-            this.processMatchesAfterSwap();
-            return true;
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                // Проверяем обмен с правым соседом
+                if (x < size - 1) {
+                    if (this.boardSystem.hasMatchesAfterSwap(x, y, x + 1, y)) {
+                        return true;
+                    }
+                }
+                // Проверяем обмен с нижним соседом
+                if (y < size - 1) {
+                    if (this.boardSystem.hasMatchesAfterSwap(x, y, x, y + 1)) {
+                        return true;
+                    }
+                }
+            }
         }
 
         return false;
     }
 
-    checkGameStatus() {
-        if (this.score >= this.goal) {
-            this.gameWon();
-        } else if (this.moves <= 0) {
-            this.gameLost();
-        } else {
-            this.gameActive = true;
-            this.isProcessing = false;
+    // Перемешивание поля
+    shuffleBoard() {
+        // Собираем все кристаллы
+        const crystals = [];
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                if (this.board[y][x] >= 0) {
+                    crystals.push(this.board[y][x]);
+                }
+            }
+        }
+
+        // Перемешиваем
+        for (let i = crystals.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [crystals[i], crystals[j]] = [crystals[j], crystals[i]];
+        }
+
+        // Заполняем поле
+        let index = 0;
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                this.board[y][x] = crystals[index++];
+            }
+        }
+
+        this.render();
+
+        // Проверяем совпадения
+        setTimeout(() => {
+            if (this.boardSystem.findAllMatches().length > 0) {
+                this.processMatchChain();
+            }
+        }, 100);
+    }
+
+    // Мягкое обновление UI
+    softUpdate() {
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                const cell = this.animations.getCellElement(x, y);
+                if (cell && this.board[y][x] >= 0) {
+                    const crystalUrl = this.getCrystalImage(this.board[y][x]);
+                    cell.style.backgroundImage = crystalUrl;
+                    cell.style.opacity = '1';
+                    cell.style.transform = 'scale(1)';
+                }
+            }
         }
         this.updateUI();
     }
 
-    async gameWon() {
-        this.gameActive = false;
-        this.showMessage('Победа! 🎉', 'success');
-
-        await this.api.saveGameResult(this.score, true);
-        this.coins += Math.floor(this.score / 10);
-        this.updateUI();
-
-        setTimeout(() => {
-            this.gameActive = true;
-            this.isProcessing = false;
-        }, 2000);
-    }
-
-    async gameLost() {
-        this.gameActive = false;
-
-        if (this.lives > 0) {
-            this.lives--;
-            this.showMessage(`Вы проиграли! Осталось ❤️ ${this.lives}`, 'error');
-            await this.api.saveGameResult(this.score, false);
+    // Получение изображения кристалла
+    getCrystalImage(type) {
+        // Проверяем наличие themeManager
+        if (typeof themeManager !== 'undefined') {
+            return themeManager.getCrystalImage(type);
         }
 
-        this.updateUI();
-
-        setTimeout(() => {
-            this.gameActive = true;
-            this.isProcessing = false;
-        }, 2000);
+        // Запасной вариант
+        const colors = [
+            'linear-gradient(135deg, #ff6b6b, #ee5253)', // Красный
+            'linear-gradient(135deg, #ff9ff3, #f368e0)', // Розовый
+            'linear-gradient(135deg, #feca57, #ff9f43)', // Оранжевый
+            'linear-gradient(135deg, #ff6b6b, #ee5253)', // Красный
+            'linear-gradient(135deg, #48dbfb, #0abde3)', // Голубой
+            'linear-gradient(135deg, #1dd1a1, #10ac84)'  // Зеленый
+        ];
+        return colors[type] || colors[0];
     }
 
-    addScore(points) {
-        this.score += points;
-        document.getElementById('score').textContent = this.score;
-    }
-
-    newGame() {
-        if (this.lives <= 0) {
-            this.showMessage('Нет жизней! Подождите восстановления', 'error');
+    // Рендер поля
+    render() {
+        console.log('Rendering board...');
+        const boardElement = document.getElementById('gameBoard');
+        if (!boardElement) {
+            console.error('Board element not found!');
             return;
         }
 
-        this.createBoard();
-        this.score = 0;
-        this.moves = this.getMovesForSize();
-        this.goal = this.getGoalForSize();
-        this.gameActive = true;
-        this.isProcessing = false;
-        this.selectedCell = null;
-        this.render();
-    }
-
-    render() {
-        const boardElement = document.getElementById('gameBoard');
-        if (!boardElement) return;
+        const selectedX = this.selectedCell?.x;
+        const selectedY = this.selectedCell?.y;
 
         boardElement.innerHTML = '';
 
@@ -283,14 +449,16 @@ class Match3Game {
                 cell.dataset.x = x;
                 cell.dataset.y = y;
 
-                if (this.board[y][x] >= 0) {
-                    const crystalUrl = themeManager.getCrystalImage(this.board[y][x]);
+                if (selectedX === x && selectedY === y) {
+                    cell.classList.add('selected');
+                }
+
+                if (this.board[y] && this.board[y][x] >= 0) {
+                    const crystalUrl = this.getCrystalImage(this.board[y][x]);
                     cell.style.backgroundImage = crystalUrl;
                     cell.style.backgroundSize = 'contain';
                     cell.style.backgroundPosition = 'center';
                     cell.style.backgroundRepeat = 'no-repeat';
-                } else {
-                    cell.style.background = 'rgba(0,0,0,0.1)';
                 }
 
                 grid.appendChild(cell);
@@ -300,42 +468,140 @@ class Match3Game {
         boardElement.appendChild(grid);
         this.updateUI();
 
+        // Переинициализируем Drag&Drop
         if (this.dragDrop) {
-            setTimeout(() => this.dragDrop.init(), 50);
+            setTimeout(() => this.dragDrop.init(), 100);
         }
     }
 
+    // Обновление UI
     updateUI() {
-        document.getElementById('score').textContent = this.score;
-        document.getElementById('goal').textContent = this.goal;
-        document.getElementById('moves').textContent = this.moves;
-        document.getElementById('lives').textContent = this.lives;
-        document.getElementById('coins').textContent = `💰 ${this.coins}`;
+        const scoreEl = document.getElementById('score');
+        const goalEl = document.getElementById('goal');
+        const movesEl = document.getElementById('moves');
+        const livesEl = document.getElementById('lives');
+        const coinsEl = document.getElementById('coins');
 
-        document.getElementById('lightningCount').textContent = this.inventory.lightning || 0;
-        document.getElementById('crossCount').textContent = this.inventory.cross || 0;
-        document.getElementById('bombCount').textContent = this.inventory.bomb || 0;
-        document.getElementById('rainbowCount').textContent = this.inventory.rainbow || 0;
+        if (scoreEl) scoreEl.textContent = this.score;
+        if (goalEl) goalEl.textContent = this.goal;
+        if (movesEl) movesEl.textContent = this.moves;
+        if (livesEl) livesEl.textContent = this.lives;
+        if (coinsEl) coinsEl.textContent = `💰 ${this.coins}`;
+
+        // Обновляем счетчики бонусов
+        const lightningCount = document.getElementById('lightningCount');
+        const crossCount = document.getElementById('crossCount');
+        const bombCount = document.getElementById('bombCount');
+        const rainbowCount = document.getElementById('rainbowCount');
+
+        if (lightningCount) lightningCount.textContent = this.inventory.lightning || 0;
+        if (crossCount) crossCount.textContent = this.inventory.cross || 0;
+        if (bombCount) bombCount.textContent = this.inventory.bomb || 0;
+        if (rainbowCount) rainbowCount.textContent = this.inventory.rainbow || 0;
     }
 
+    // Добавление очков
+    addScore(points) {
+        this.score += points;
+        this.updateUI();
+    }
+
+    // Проверка статуса игры
+    checkGameStatus() {
+        if (this.score >= this.goal) {
+            this.gameWon();
+        } else if (this.moves <= 0) {
+            this.gameLost();
+        }
+    }
+
+    // Победа
+    gameWon() {
+        this.gameActive = false;
+        this.showMessage('Победа! 🎉', 'success');
+
+        this.coins += Math.floor(this.score / 10);
+        this.updateUI();
+
+        setTimeout(() => {
+            this.gameActive = true;
+        }, 2000);
+    }
+
+    // Поражение
+    gameLost() {
+        this.gameActive = false;
+
+        if (this.lives > 0) {
+            this.lives--;
+            this.showMessage(`Вы проиграли! Осталось ❤️ ${this.lives}`, 'error');
+        }
+
+        this.updateUI();
+
+        setTimeout(() => {
+            this.gameActive = true;
+        }, 2000);
+    }
+
+    // Новая игра
+    newGame() {
+        console.log('Starting new game, current gameActive =', this.gameActive);
+
+        if (this.lives <= 0) {
+            this.showMessage('Нет жизней! Подождите восстановления', 'error');
+            return;
+        }
+
+        // Сбрасываем все флаги
+        this.isProcessing = false;
+        this.matchChainInProgress = false;
+        this.gameActive = true;
+        this.selectedCell = null;
+
+        // Создаем новое поле
+        this.createBoard();
+        this.score = 0;
+        this.moves = this.getMovesForSize();
+        this.goal = this.getGoalForSize();
+
+        // Рендерим
+        this.render();
+
+        // Переинициализируем Drag&Drop
+        if (this.dragDrop) {
+            setTimeout(() => {
+                this.dragDrop.init();
+            }, 100);
+        }
+
+        this.showMessage('Новая игра! Удачи!', 'info');
+        console.log('New game started, gameActive =', this.gameActive);
+    }
+
+    // Получение количества ходов для размера поля
     getMovesForSize() {
         const moves = { 6: 15, 8: 20, 10: 30 };
-        return moves[this.boardSize];
+        return moves[this.boardSize] || 20;
     }
 
+    // Получение цели для размера поля
     getGoalForSize() {
         const goals = { 6: 300, 8: 500, 10: 800 };
-        return goals[this.boardSize];
+        return goals[this.boardSize] || 500;
     }
 
+    // Таймер жизней
     startLifeTimer() {
-        this.lifeTimer = setInterval(() => {
-            // Здесь будет логика восстановления жизней
-        }, 1000);
+        // Заглушка для таймера
+        console.log('Life timer started');
     }
 
+    // Показать сообщение
     showMessage(text, type = 'info') {
         const messageEl = document.getElementById('gameMessage');
+        if (!messageEl) return;
+
         messageEl.textContent = text;
         messageEl.className = `game-message ${type}`;
 
@@ -345,68 +611,45 @@ class Match3Game {
         }, 3000);
     }
 
+    // Настройка обработчиков событий
     setupEventListeners() {
+        console.log('Setting up event listeners');
+
+        // Кнопки размера поля
         document.querySelectorAll('.size-btn').forEach(btn => {
             btn.onclick = (e) => {
                 document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 this.boardSize = parseInt(e.target.dataset.size);
+                console.log('Board size changed to:', this.boardSize);
                 this.newGame();
             };
         });
 
+        // Кнопка новой игры
+        const newGameBtn = document.getElementById('newGameBtn');
+        if (newGameBtn) {
+            newGameBtn.onclick = () => this.newGame();
+        }
+
+        // Кнопка покупки ходов
+        const buyMovesBtn = document.getElementById('buyMovesBtn');
+        if (buyMovesBtn) {
+            buyMovesBtn.onclick = () => this.buyMoves();
+        }
+
+        // Бонусы
         document.querySelectorAll('.bonus-card').forEach(card => {
             card.onclick = () => {
                 const bonusType = card.dataset.bonus;
-                this.useBonus(bonusType);
+                if (bonusType) {
+                    this.useBonus(bonusType);
+                }
             };
         });
-
-        document.getElementById('newGameBtn').onclick = () => this.newGame();
-        document.getElementById('buyMovesBtn').onclick = () => this.buyMoves();
     }
 
-    async useBonus(type) {
-        if (!this.gameActive || this.lives <= 0) {
-            this.showMessage('Игра не активна', 'error');
-            return;
-        }
-
-        if (this.inventory[type] <= 0) {
-            this.showMessage('Нет бонуса в инвентаре', 'error');
-            return;
-        }
-
-        if (!this.selectedCell) {
-            this.showMessage('Выберите клетку', 'error');
-            return;
-        }
-
-        // ... остальная логика бонусов
-    }
-
-    async buyBonus(type) {
-        const prices = {
-            lightning: 150,
-            cross: 250,
-            bomb: 100,
-            rainbow: 200
-        };
-
-        if (this.coins < prices[type]) {
-            this.showMessage('Недостаточно монет', 'error');
-            return;
-        }
-
-        const result = await this.api.buyBonus(type, prices[type]);
-        if (result.success) {
-            this.coins -= prices[type];
-            this.inventory[type]++;
-            this.showMessage('Бонус куплен!', 'success');
-            this.updateUI();
-        }
-    }
-
+    // Покупка ходов
     buyMoves() {
         if (this.lives <= 0) {
             this.showMessage('Нет жизней', 'error');
@@ -418,276 +661,42 @@ class Match3Game {
         this.showMessage('+5 ходов!', 'success');
         this.updateUI();
     }
+
+    // Использование бонуса (заглушка)
+    useBonus(type) {
+        if (!this.gameActive) {
+            this.showMessage('Игра не активна', 'error');
+            return;
+        }
+
+        if (this.inventory[type] <= 0) {
+            this.showMessage('Нет бонуса', 'error');
+            return;
+        }
+
+        if (!this.selectedCell) {
+            this.showMessage('Выберите клетку', 'error');
+            return;
+        }
+
+        this.showMessage(`Бонус ${type} активирован`, 'success');
+    }
 }
 
 
-class DragDropManager {
-    constructor(game) {
-        console.log('DragDropManager создан');
-        this.game = game;
-        this.isDragging = false;
-        this.dragStart = null;
-        this.dragClone = null;
-        this.clickTimer = null;
-        this.clickThreshold = 200;
-
-        // Привязываем методы к контексту
-        this.handleMouseDown = this.handleMouseDown.bind(this);
-        this.handleMouseMove = this.handleMouseMove.bind(this);
-        this.handleMouseUp = this.handleMouseUp.bind(this);
-    }
-
-    init() {
-        console.log('DragDropManager.init() вызван');
-
-        // Удаляем старые обработчики
-        this.removeAllListeners();
-
-        const cells = document.querySelectorAll('.cell');
-        console.log('Найдено клеток:', cells.length);
-
-        cells.forEach(cell => {
-            // Добавляем обработчики
-            cell.addEventListener('mousedown', this.handleMouseDown);
-
-            // Визуальная подсказка
-            cell.style.cursor = 'pointer';
-        });
-
-        // Добавляем глобальные обработчики для отслеживания движения и отпускания
-        document.addEventListener('mousemove', this.handleMouseMove);
-        document.addEventListener('mouseup', this.handleMouseUp);
-    }
-
-    removeAllListeners() {
-        const cells = document.querySelectorAll('.cell');
-        cells.forEach(cell => {
-            cell.removeEventListener('mousedown', this.handleMouseDown);
-        });
-        document.removeEventListener('mousemove', this.handleMouseMove);
-        document.removeEventListener('mouseup', this.handleMouseUp);
-    }
-
-    handleMouseDown(e) {
-        const cell = e.target.closest('.cell');
-        if (!cell) {
-            console.log('mousedown не на клетке');
-            return;
-        }
-
-        console.log('mousedown на клетке', cell.dataset);
-        e.preventDefault();
-
-        if (this.game.animations.isAnimating || !this.game.gameActive || this.game.lives <= 0) {
-            console.log('Блокировка: анимация или неактивна игра');
-            return;
-        }
-
-        const x = parseInt(cell.dataset.x);
-        const y = parseInt(cell.dataset.y);
-
-        this.dragStart = {
-            x, y, cell,
-            startX: e.clientX,
-            startY: e.clientY,
-            time: Date.now()
-        };
-
-        // Небольшая задержка для определения клика vs драга
-        this.clickTimer = setTimeout(() => {
-            if (this.dragStart && !this.isDragging) {
-                console.log('Начинаем драг по таймеру');
-                this.startDragging(e, cell);
-            }
-        }, this.clickThreshold);
-
-        cell.classList.add('potential-drag');
-    }
-
-    handleMouseMove(e) {
-        if (!this.dragStart || this.game.animations.isAnimating) return;
-
-        // Если еще не драг, проверяем смещение
-        if (!this.isDragging) {
-            const dx = Math.abs(e.clientX - this.dragStart.startX);
-            const dy = Math.abs(e.clientY - this.dragStart.startY);
-
-            // Если сдвинули мышь больше чем на 10px - начинаем драг сразу
-            if (dx > 10 || dy > 10) {
-                console.log('Начинаем драг по смещению');
-                clearTimeout(this.clickTimer);
-                this.startDragging(e, this.dragStart.cell);
-            }
-            return;
-        }
-
-        // Если уже драг - двигаем клон
-        e.preventDefault();
-        if (this.dragClone) {
-            this.dragClone.style.left = (e.clientX - 30) + 'px';
-            this.dragClone.style.top = (e.clientY - 30) + 'px';
-
-            // Подсвечиваем клетку под курсором
-            this.highlightDropTarget(e);
-        }
-    }
-
-    handleMouseUp(e) {
-        if (!this.dragStart) return;
-
-        console.log('mouseup', { isDragging: this.isDragging });
-        clearTimeout(this.clickTimer);
-
-        // Если это был клик (не драг)
-        if (!this.isDragging) {
-            this.handleClick(this.dragStart.cell);
-        } else {
-            // Если был драг
-            this.handleDrop(e);
-        }
-
-        this.cleanupDrag();
-    }
-
-    handleClick(cell) {
-        console.log('handleClick на клетке', cell.dataset);
-
-        const x = parseInt(cell.dataset.x);
-        const y = parseInt(cell.dataset.y);
-
-        // Логика выбора клетки
-        if (!this.game.selectedCell) {
-            // Первый клик - выбираем клетку
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-            cell.classList.add('selected');
-            this.game.selectedCell = { x, y };
-            console.log('Выбрана клетка:', x, y);
-        } else {
-            // Второй клик - пробуем обменять
-            const x1 = this.game.selectedCell.x;
-            const y1 = this.game.selectedCell.y;
-
-            console.log('Обмен между:', x1, y1, 'и', x, y);
-
-            // Проверяем соседство
-            const dx = Math.abs(x - x1);
-            const dy = Math.abs(y - y1);
-
-            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-                this.game.trySwap(x1, y1, x, y);
-            } else {
-                console.log('Не соседние клетки');
-                // Если не соседние - просто выбираем новую
-                document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-                cell.classList.add('selected');
-                this.game.selectedCell = { x, y };
-            }
-
-            // Не снимаем выделение сразу - это сделает trySwap если нужно
-        }
-    }
-
-    handleDrop(e) {
-        console.log('handleDrop');
-
-        // Находим клетку под мышкой
-        const elementsUnderMouse = document.elementsFromPoint(e.clientX, e.clientY);
-        const dropCell = elementsUnderMouse.find(el => el.classList.contains('cell'));
-
-        if (dropCell && dropCell !== this.dragStart.cell) {
-            const targetX = parseInt(dropCell.dataset.x);
-            const targetY = parseInt(dropCell.dataset.y);
-            const startX = this.dragStart.x;
-            const startY = this.dragStart.y;
-
-            console.log('Дроп на клетку:', targetX, targetY);
-
-            // Проверяем соседство
-            const dx = Math.abs(targetX - startX);
-            const dy = Math.abs(targetY - startY);
-
-            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-                this.game.trySwap(startX, startY, targetX, targetY);
-            } else {
-                console.log('Не соседние клетки для дропа');
-            }
-        } else {
-            console.log('Дроп не на клетку');
-        }
-    }
-
-    startDragging(e, cell) {
-        this.isDragging = true;
-        this.createDragClone(cell, e);
-        cell.classList.add('dragging');
-
-        // Убираем выделение, если было
-        if (this.game.selectedCell) {
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-            this.game.selectedCell = null;
-        }
-    }
-
-    createDragClone(cell, e) {
-        if (this.dragClone) {
-            this.dragClone.remove();
-        }
-
-        this.dragClone = cell.cloneNode(true);
-        this.dragClone.classList.add('drag-clone');
-        this.dragClone.style.position = 'fixed';
-        this.dragClone.style.left = (e.clientX - 30) + 'px';
-        this.dragClone.style.top = (e.clientY - 30) + 'px';
-        this.dragClone.style.width = '60px';
-        this.dragClone.style.height = '60px';
-        this.dragClone.style.zIndex = '2000';
-        this.dragClone.style.opacity = '0.9';
-        this.dragClone.style.transform = 'scale(1.1)';
-        this.dragClone.style.cursor = 'grabbing';
-        this.dragClone.style.pointerEvents = 'none';
-        this.dragClone.style.transition = 'none';
-
-        document.body.appendChild(this.dragClone);
-    }
-
-    highlightDropTarget(e) {
-        document.querySelectorAll('.cell').forEach(c => c.classList.remove('drop-target'));
-
-        const elementsUnderMouse = document.elementsFromPoint(e.clientX, e.clientY);
-        const dropCell = elementsUnderMouse.find(el => el.classList.contains('cell'));
-
-        if (dropCell && dropCell !== this.dragStart?.cell) {
-            const x = parseInt(dropCell.dataset.x);
-            const y = parseInt(dropCell.dataset.y);
-            const startX = this.dragStart.x;
-            const startY = this.dragStart.y;
-
-            const dx = Math.abs(x - startX);
-            const dy = Math.abs(y - startY);
-
-            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-                dropCell.classList.add('drop-target');
-            }
-        }
-    }
-
-    cleanupDrag() {
-        this.isDragging = false;
-
-        if (this.dragClone) {
-            this.dragClone.remove();
-            this.dragClone = null;
-        }
-
-        document.querySelectorAll('.cell').forEach(c => {
-            c.classList.remove('dragging', 'potential-drag', 'drop-target');
-        });
-
-        this.dragStart = null;
-    }
-}
-
-// Запуск игры при загрузке страницы
+// В конце файла или в отдельном скрипте
 window.onload = () => {
+    console.log('Window loaded, starting game...');
+
+    // Проверяем наличие необходимых элементов
+    if (!document.getElementById('gameBoard')) {
+        console.error('Game board element not found!');
+        return;
+    }
+
+    // Создаем игру
     window.game = new Match3Game();
+
+    // Для отладки
+    console.log('Game instance created:', window.game);
 };
