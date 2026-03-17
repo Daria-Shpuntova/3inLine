@@ -95,7 +95,7 @@ body {
 .board-grid {
     display: inline-grid;
     gap: 4px;
-    background: #bbada0;
+    background: #d5ffd1;
     padding: 8px;
     border-radius: 10px;
 }
@@ -523,3 +523,63 @@ body {
 }
 
 
+/* Плавные переходы для всех элементов */
+.game-container,
+.game-header,
+.game-board,
+.game-stats,
+.bonus-card,
+.btn,
+.cell {
+    transition: all 0.3s ease;
+}
+
+/* Стили для бонусов в новой теме */
+.bonus-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    color: white;
+}
+
+.bonus-name {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.bonus-count {
+    color: white;
+}
+
+/* Стили для статистики */
+.game-stats {
+    color: white;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-value {
+    color: white;
+}
+
+/* Стили для кнопок размера */
+.size-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.size-btn.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: gold;
+}
+
+/* Стили для ячеек */
+.cell {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 12px rgba(0,0,0,0.4);
+}
