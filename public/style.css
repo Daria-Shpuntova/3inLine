@@ -583,3 +583,17 @@ body {
     transform: scale(1.05);
     box-shadow: 0 8px 12px rgba(0,0,0,0.4);
 }
+
+.cell {
+    transition: all 0.3s ease;
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Убедитесь, что изображения не искажаются */
+.cell img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}

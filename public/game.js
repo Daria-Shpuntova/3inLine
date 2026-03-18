@@ -393,10 +393,18 @@ class Match3Game {
     softUpdate() {
         for (let y = 0; y < this.boardSize; y++) {
             for (let x = 0; x < this.boardSize; x++) {
-                const cell = this.animations.getCellElement(x, y);
-                if (cell && this.board[y][x] >= 0) {
+                // Пробуем найти клетку по разным атрибутам
+                let cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+                if (!cell) {
+                    cell = document.querySelector(`.cell[data-col="${x}"][data-row="${y}"]`);
+                }
+
+                if (cell && this.board[y] && this.board[y][x] >= 0) {
                     const crystalUrl = this.getCrystalImage(this.board[y][x]);
                     cell.style.backgroundImage = crystalUrl;
+                    cell.style.backgroundSize = 'contain';
+                    cell.style.backgroundPosition = 'center';
+                    cell.style.backgroundRepeat = 'no-repeat';
                     cell.style.opacity = '1';
                     cell.style.transform = 'scale(1)';
                 }
@@ -407,21 +415,22 @@ class Match3Game {
 
     // Получение изображения кристалла
     getCrystalImage(type) {
-        // Проверяем наличие themeManager
-        if (typeof themeManager !== 'undefined') {
-            return themeManager.getCrystalImage(type);
+        // Всегда используем themeManager, если он доступен
+        if (window.themeManager) {
+            return window.themeManager.getCrystalImage(type);
         }
 
-        // Запасной вариант
-        const colors = [
-            'linear-gradient(135deg, #ff6b6b, #ee5253)', // Красный
-            'linear-gradient(135deg, #ff9ff3, #f368e0)', // Розовый
-            'linear-gradient(135deg, #feca57, #ff9f43)', // Оранжевый
-            'linear-gradient(135deg, #ff6b6b, #ee5253)', // Красный
-            'linear-gradient(135deg, #48dbfb, #0abde3)', // Голубой
-            'linear-gradient(135deg, #1dd1a1, #10ac84)'  // Зеленый
-        ];
-        return colors[type] || colors[0];
+        // Запасной вариант с градиентами
+        console.warn('ThemeManager not available, using fallback gradients');
+        const gradients = {
+            0: 'linear-gradient(135deg, #ff6b6b, #ee5253)', // Красный
+            1: 'linear-gradient(135deg, #4ecdc4, #45b7d1)', // Голубой
+            2: 'linear-gradient(135deg, #96ceb4, #6b8e4c)', // Зеленый
+            3: 'linear-gradient(135deg, #ffeaa7, #fdcb6e)', // Желтый
+            4: 'linear-gradient(135deg, #a8e6cf, #56ab2f)', // Салатовый
+            5: 'linear-gradient(135deg, #dfe6e9, #b2bec3)'  // Серый
+        };
+        return gradients[type] || gradients[0];
     }
 
     // Рендер поля
@@ -446,8 +455,11 @@ class Match3Game {
             for (let x = 0; x < this.boardSize; x++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
+                // Добавляем ОБА варианта атрибутов для совместимости
                 cell.dataset.x = x;
                 cell.dataset.y = y;
+                cell.dataset.col = x;
+                cell.dataset.row = y;
 
                 if (selectedX === x && selectedY === y) {
                     cell.classList.add('selected');
@@ -498,6 +510,31 @@ class Match3Game {
         if (crossCount) crossCount.textContent = this.inventory.cross || 0;
         if (bombCount) bombCount.textContent = this.inventory.bomb || 0;
         if (rainbowCount) rainbowCount.textContent = this.inventory.rainbow || 0;
+    }
+
+    refreshCrystals() {
+        console.log('Refreshing all crystals');
+
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                // Пробуем найти клетку по разным атрибутам
+                let cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+
+                // Если не нашли, пробуем через data-col/data-row
+                if (!cell) {
+                    cell = document.querySelector(`.cell[data-col="${x}"][data-row="${y}"]`);
+                }
+
+                if (cell && this.board[y] && this.board[y][x] >= 0) {
+                    const crystalUrl = this.getCrystalImage(this.board[y][x]);
+
+                    cell.style.backgroundImage = crystalUrl;
+                    cell.style.backgroundSize = 'contain';
+                    cell.style.backgroundPosition = 'center';
+                    cell.style.backgroundRepeat = 'no-repeat';
+                }
+            }
+        }
     }
 
     // Добавление очков

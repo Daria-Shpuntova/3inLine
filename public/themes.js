@@ -46,12 +46,12 @@ class ThemeManager {
                 boardBg: 'url("images/themes/space/board-bg.png")',
                 cellBg: 'url("images/themes/space/cell-bg.png")',
                 crystals: {
-                    0: 'url("./images/themes/space/crystal-red.jpg")',
-                    1: 'url("./images/themes/space/crystal-blue.jpg")',
-                    2: 'url("./images/themes/space/crystal-green.jpg")',
-                    3: 'url("images/themes/space/crystal-yellow.jpg")',
-                    4: 'url("images/themes/space/crystal-purple.jpg")',
-                    5: 'url("images/themes/space/crystal-pink.jpg")'
+                    0: 'url("./images/themes/space/korabl22.png")',
+                    1: 'url("./images/themes/space/moon1.png")',
+                    2: 'url("./images/themes/space/saturn1.png")',
+                    3: 'url("images/themes/space/sputnik11.png")',
+                    4: 'url("images/themes/space/star1.png")',
+                    5: 'url("images/themes/space/venera1.png")'
                 },
                 effects: {
                     cellShadow: '0 4px 6px rgba(0,0,0,0.3)',
@@ -75,12 +75,12 @@ class ThemeManager {
                 boardBg: 'url("images/themes/magic/board-bg.png")',
                 cellBg: 'url("images/themes/magic/cell-bg.png")',
                 crystals: {
-                    0: 'url("./images/themes/magic/crystal-red.jpg")',
-                    1: 'url("./images/themes/magic/crystal-blue.jpg")',
-                    2: 'url("./images/themes/magic/crystal-green.jpg")',
-                    3: 'url("images/themes/magic/crystal-yellow.jpg")',
-                    4: 'url("images/themes/magic/crystal-purple.jpg")',
-                    5: 'url("images/themes/magic/crystal-pink.jpg")'
+                    0: 'url("./images/themes/magic/svecha1.png")',
+                    1: 'url("./images/themes/magic/simvol22.png")',
+                    2: 'url("./images/themes/magic/simvol1.png")',
+                    3: 'url("images/themes/magic/shar1.png")',
+                    4: 'url("images/themes/magic/fire2.png")',
+                    5: 'url("images/themes/magic/fire22.png")'
                 },
                 effects: {
                     cellShadow: '0 4px 6px rgba(0,0,0,0.3)',
@@ -114,6 +114,7 @@ class ThemeManager {
     setTheme(themeName) {
         if (!this.themes[themeName]) return;
 
+        console.log('Setting theme to:', themeName);
         this.currentTheme = themeName;
         const theme = this.themes[themeName];
 
@@ -131,7 +132,6 @@ class ThemeManager {
             gameContainer.style.border = `2px solid ${theme.colors.border}`;
         }
 
-
         // 3. Меняем фон игрового поля
         const boardElement = document.getElementById('gameBoard');
         if (boardElement) {
@@ -141,39 +141,37 @@ class ThemeManager {
             boardElement.style.boxShadow = `0 10px 20px ${theme.effects.glowColor}`;
         }
 
+        // 4. Меняем цвет сетки (board-grid)
         const colorBoard = document.querySelectorAll('.board-grid');
         colorBoard.forEach(btn => {
             btn.style.background = theme.colors.colorBoard;
         });
 
-
-
-        // 4. Меняем стиль шапки
+        // 5. Меняем стиль шапки
         const gameHeader = document.querySelector('.game-header');
         if (gameHeader) {
             gameHeader.style.background = theme.colors.header;
         }
 
-        // 5. Меняем стиль статистики
+        // 6. Меняем стиль статистики
         const gameStats = document.querySelector('.game-stats');
         if (gameStats) {
             gameStats.style.background = theme.colors.stats;
             gameStats.style.color = 'white';
         }
 
-        // 6. Меняем стиль кнопок
+        // 7. Меняем стиль кнопок
         const buttons = document.querySelectorAll('.btn-primary');
         buttons.forEach(btn => {
             btn.style.background = theme.colors.buttons;
         });
+
         const buttonsStap = document.querySelectorAll('.btn-secondary');
         buttonsStap.forEach(btn => {
             btn.style.background = theme.colors.buttonsStap;
         });
 
-
-
-        // 7. Меняем стиль бонусов
+        // 8. Меняем стиль бонусов
         const bonusCards = document.querySelectorAll('.bonus-card');
         bonusCards.forEach(card => {
             card.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -181,7 +179,7 @@ class ThemeManager {
             card.style.border = `1px solid ${theme.colors.border}`;
         });
 
-        // 8. Меняем стиль селекторов размера
+        // 9. Меняем стиль селекторов размера
         const sizeBtns = document.querySelectorAll('.size-btn');
         sizeBtns.forEach(btn => {
             btn.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -191,7 +189,7 @@ class ThemeManager {
         // Сохраняем тему
         localStorage.setItem('gameTheme', themeName);
 
-        // Перерисовываем кристаллы
+        // 10. Обновляем ВСЕ кристаллы на поле!
         this.updateAllCrystals();
 
         // Добавляем эффект перехода
@@ -199,23 +197,45 @@ class ThemeManager {
     }
 
     // Обновление всех кристаллов на поле
+    // themes.js - исправленный метод updateAllCrystals
+
     updateAllCrystals() {
+        console.log('Updating all crystals with theme:', this.currentTheme);
+
+        // Находим все клетки на поле
         const cells = document.querySelectorAll('.cell');
+
         cells.forEach(cell => {
-            const row = cell.dataset.row;
-            const col = cell.dataset.col;
+            // Пробуем разные варианты получения координат
+            const x = cell.dataset.x !== undefined ? parseInt(cell.dataset.x) :
+                (cell.dataset.col !== undefined ? parseInt(cell.dataset.col) : null);
+            const y = cell.dataset.y !== undefined ? parseInt(cell.dataset.y) :
+                (cell.dataset.row !== undefined ? parseInt(cell.dataset.row) : null);
 
-            if (row && col && window.game && window.game.board.grid[row] && window.game.board.grid[row][col] !== undefined) {
-                const value = window.game.board.grid[row][col];
-                cell.style.background = this.getCrystalImage(value);
-                cell.style.backgroundSize = 'cover';
-                cell.style.backgroundPosition = 'center';
+            // Если есть координаты и игра существует
+            if (x !== null && y !== null && window.game && window.game.board && window.game.board[y]) {
+                const value = window.game.board[y][x];
 
-                // Применяем эффекты темы
-                const theme = this.themes[this.currentTheme];
-                cell.style.boxShadow = theme.effects.cellShadow;
+                if (value !== undefined && value >= 0) {
+                    // Получаем изображение для этого типа кристалла
+                    const crystalImage = this.getCrystalImage(value);
+
+                    // Применяем стиль
+                    cell.style.backgroundImage = crystalImage;
+                    cell.style.backgroundSize = 'contain';
+                    cell.style.backgroundPosition = 'center';
+                    cell.style.backgroundRepeat = 'no-repeat';
+
+                    // Добавляем тень из темы
+                    const theme = this.themes[this.currentTheme];
+                    cell.style.boxShadow = theme.effects.cellShadow;
+                }
+            } else {
+                console.warn('Cell without valid coordinates:', cell, {x, y});
             }
         });
+
+        console.log('Crystals updated');
     }
 
     // Получить стиль кристалла по цвету
