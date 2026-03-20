@@ -19,7 +19,7 @@ class Match3Game {
         this.boardSize = 8;
         this.board = [];
         this.score = 0;
-        this.moves = 20;
+        this.moves = 30;
         this.goal = 1200;
         this.lives = 5;
         this.coins = 100;
@@ -31,13 +31,15 @@ class Match3Game {
         };
 
         this.selectedCell = null;
-        this.gameActive = true; // Важно: сразу устанавливаем в true
+        this.gameActive = true;
         this.lifeTimer = null;
         this.animations = null;
         this.dragDrop = null;
         this.isInitialized = false;
         this.isProcessing = false;
         this.matchChainInProgress = false;
+        this.isGameLost = false;
+        this.lifeTimerUpdate = null;
 
         console.log('Match3Game создан, gameActive =', this.gameActive);
 
@@ -71,6 +73,9 @@ class Match3Game {
             // Запускаем таймер жизней
             this.startLifeTimer();
 
+            // Принудительно проверяем восстановление жизней
+            this.forceCheckLives();
+
             // Рендерим поле
             this.render();
 
@@ -82,12 +87,12 @@ class Match3Game {
             this.setupEventListeners();
 
             this.isInitialized = true;
-            this.gameActive = true; // Убеждаемся, что игра активна
+            this.gameActive = true;
             console.log('init() completed successfully, gameActive =', this.gameActive);
 
         } catch (error) {
             console.error('Init error:', error);
-            this.gameActive = true; // Даже при ошибке пытаемся сделать игру активной
+            this.gameActive = true;
         }
     }
 
@@ -169,7 +174,7 @@ class Match3Game {
     }
 
     // ИСПРАВЛЕННЫЙ метод processMatchChain
-    // ИСПРАВЛЕННЫЙ метод processMatchChain
+
     async processMatchChain() {
         console.log('Starting match chain');
         let hasMatches = true;
@@ -501,6 +506,7 @@ class Match3Game {
     }
 
     // Обновление UI
+    // Обновление UI
     updateUI() {
         const scoreEl = document.getElementById('score');
         const goalEl = document.getElementById('goal');
@@ -510,7 +516,10 @@ class Match3Game {
 
         if (scoreEl) scoreEl.textContent = this.score;
         if (goalEl) goalEl.textContent = this.goal;
-        if (movesEl) movesEl.textContent = this.moves;
+        if (movesEl) {
+            movesEl.textContent = this.moves;
+            console.log('Updating moves display to:', this.moves); // Добавляем отладку
+        }
         if (livesEl) livesEl.textContent = this.lives;
         if (coinsEl) coinsEl.textContent = `💰 ${this.coins}`;
 
@@ -524,6 +533,21 @@ class Match3Game {
         if (crossCount) crossCount.textContent = this.inventory.cross || 0;
         if (bombCount) bombCount.textContent = this.inventory.bomb || 0;
         if (rainbowCount) rainbowCount.textContent = this.inventory.rainbow || 0;
+
+        // Вызываем отладку
+        this.debug();
+    }
+
+    debug() {
+        console.log('=== GAME DEBUG ===');
+        console.log('Lives:', this.lives);
+        console.log('Moves:', this.moves);
+        console.log('Score:', this.score);
+        console.log('Goal:', this.goal);
+        console.log('Board size:', this.boardSize);
+        console.log('Game active:', this.gameActive);
+        console.log('Is processing:', this.isProcessing);
+        console.log('==================');
     }
 
     refreshCrystals() {
@@ -558,15 +582,19 @@ class Match3Game {
     }
 
     // Проверка статуса игры
+    // Проверка статуса игры
+    // Проверка статуса игры
     checkGameStatus() {
-        // Не проверяем статус, если игра уже неактивна
-        if (!this.gameActive || this.isProcessing) {
+        // Не проверяем статус, если игра уже неактивна или идет обработка
+        if (!this.gameActive || this.isProcessing || this.isGameLost) {
             return;
         }
 
         if (this.score >= this.goal) {
             this.gameWon();
-        } else if (this.moves <= 0) {
+        } else if (this.moves <= 0 && this.gameActive) {
+            // Добавляем проверку gameActive чтобы не вызывать несколько раз
+            console.log('Moves are 0, calling gameLost');
             this.gameLost();
         }
     }
@@ -731,13 +759,9 @@ class Match3Game {
     }
 
     // Новый метод для блокировки поля
+    // Новый метод для блокировки поля
     disableBoardInteractions() {
         console.log('Disabling board interactions');
-
-        // Отключаем Drag & Drop
-       // if (this.dragDrop) {
-       //     this.dragDrop.disable();
-       // }
 
         // Отключаем обработчики кликов на клетках
         const cells = document.querySelectorAll('.cell');
@@ -746,11 +770,14 @@ class Match3Game {
             cell.classList.add('disabled');
         });
 
-        // Отключаем кнопки действий
+        // Отключаем кнопки действий, но НЕ трогаем кнопки в модальном окне
         const actionButtons = document.querySelectorAll('.btn, .bonus-card, .size-btn, .theme-btn');
         actionButtons.forEach(btn => {
-            btn.style.pointerEvents = 'none';
-            btn.classList.add('disabled');
+            // Проверяем, что кнопка не находится в модальном окне
+            if (!btn.closest('.modal-overlay') && !btn.closest('.game-modal')) {
+                btn.style.pointerEvents = 'none';
+                btn.classList.add('disabled');
+            }
         });
     }
 
@@ -813,6 +840,7 @@ class Match3Game {
     }
 
 // Новый метод для разблокировки поля после победы
+    // Новый метод для разблокировки поля после победы
     unlockBoardAfterVictory() {
         console.log('Unlocking board after victory');
 
@@ -823,6 +851,7 @@ class Match3Game {
         this.gameActive = true;
         this.isProcessing = false;
         this.matchChainInProgress = false;
+        this.isGameLost = false; // Сбрасываем флаг поражения
 
         // Включаем обработчики на клетках
         const cells = document.querySelectorAll('.cell');
@@ -967,24 +996,86 @@ class Match3Game {
     }
 
     // Поражение
+    // Поражение
     gameLost() {
-        console.log('Game lost!');
+        console.log('=== GAME LOST CALLED ===');
+        console.log('Current lives before loss:', this.lives);
+        console.log('isGameLost flag:', this.isGameLost);
 
+        // Защита от повторного вызова
+        if (this.isGameLost) {
+            console.log('Game already lost, skipping');
+            return;
+        }
+        this.isGameLost = true;
+
+        // НЕ отнимаем жизнь здесь! Жизнь будет отниматься только при выборе "Новая игра"
+        // Просто показываем модальное окно поражения
+
+        // Блокируем игру
         this.gameActive = false;
         this.isProcessing = true;
 
-        // Блокируем поле
-        this.disableBoardInteractions();
-
-        if (this.lives > 0) {
-            this.lives--;
-        }
-
-        this.updateUI();
+        // Блокируем поле (но не сразу, чтобы модальное окно могло отобразиться)
+        setTimeout(() => {
+            this.disableBoardInteractions();
+        }, 50);
 
         // Показываем модальное окно поражения
         this.showDefeatModal();
     }
+
+    // Новый метод для запуска таймера восстановления после потери жизни
+    // Новый метод для запуска таймера восстановления после потери жизни
+    startLifeRestoreTimer() {
+        console.log('Starting life restore timer, current lives:', this.lives);
+
+        // ВАЖНО: ВСЕГДА обновляем время последней потери при каждой потере жизни
+        const currentTime = Date.now();
+        localStorage.setItem('lastLifeRestore', currentTime);
+        console.log('Updated last restore time to:', currentTime);
+
+        // Показываем таймер
+        this.updateLifeRestoreTimer();
+
+        // Если жизней 0, показываем специальное сообщение
+        if (this.lives === 0) {
+            this.showMessage('Жизни закончились! Ожидайте восстановления...', 'error');
+        }
+    }
+
+    // Новый метод для покупки ходов при поражении
+    // Новый метод для покупки ходов при поражении
+    buyMovesOnDefeat() {
+        console.log('Buying moves on defeat');
+
+        // Добавляем ходы
+        this.moves += 10;
+        this.updateUI();
+
+        // Разблокируем игру
+        this.gameActive = true;
+        this.isProcessing = false;
+        this.matchChainInProgress = false;
+        this.isGameLost = false;
+
+        // Разблокируем поле
+        this.unlockBoardAfterVictory();
+
+        this.showMessage('+10 ходов! Игра продолжается!', 'success');
+
+        // Проверяем, есть ли возможные ходы
+        if (!this.hasAnyPossibleMove()) {
+            this.shuffleBoard();
+        }
+
+        // Если жизней 0, но игрок купил ходы, показываем предупреждение
+        if (this.lives === 0) {
+            this.showMessage('Внимание: у вас 0 жизней! Будьте осторожны!', 'warning');
+        }
+    }
+
+
 
     // Новый метод для модального окна победы
     showVictoryModal() {
@@ -1045,10 +1136,14 @@ class Match3Game {
 
         if (newGameBtn) {
             newGameBtn.addEventListener('click', () => {
-                console.log('New game button clicked');
+                console.log('New game from defeat modal');
                 this.removeModal();
-                this.unlockBoardAfterVictory();
-                this.newGame();
+                this.isGameLost = false; // Сбрасываем флаг
+                // Разблокируем поле и начинаем новую игру
+                setTimeout(() => {
+                    this.unlockBoardAfterVictory();
+                    this.newGame();
+                }, 100);
             });
         }
 
@@ -1064,8 +1159,13 @@ class Match3Game {
         }
     }
 
-// Новый метод для модального окна поражения
+    // Новый метод для модального окна поражения
+
+    // Метод для модального окна поражения
+    // Метод для модального окна поражения
     showDefeatModal() {
+        console.log('Showing defeat modal, current lives:', this.lives);
+
         // Удаляем старое модальное окно, если есть
         this.removeModal();
 
@@ -1073,53 +1173,301 @@ class Match3Game {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'gameModalOverlay';
+        overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(5px);
+        z-index: 100000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
 
         // Создаем модальное окно
         const modal = document.createElement('div');
         modal.className = 'game-modal defeat-modal';
         modal.id = 'gameModal';
+        modal.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 30px;
+        min-width: 350px;
+        max-width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        position: relative;
+        z-index: 100001;
+        animation: slideIn 0.3s ease;
+    `;
 
         // Наполнение модального окна
         modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-icon">💔</div>
-            <h2 class="modal-title">ПОРАЖЕНИЕ</h2>
-            <div class="modal-stats">
-                <div class="modal-stat">
-                    <span class="modal-stat-label">Счет:</span>
-                    <span class="modal-stat-value">${this.score}</span>
-                </div>
-                <div class="modal-stat">
-                    <span class="modal-stat-label">Цель:</span>
-                    <span class="modal-stat-value">${this.goal}</span>
-                </div>
-                <div class="modal-stat">
-                    <span class="modal-stat-label">Осталось жизней:</span>
-                    <span class="modal-stat-value">❤️ ${this.lives}</span>
-                </div>
+    <div class="modal-content" style="text-align: center; color: white;">
+        <div style="font-size: 80px; margin-bottom: 20px; animation: bounce 0.5s ease;">💔</div>
+        <h2 style="font-size: 36px; margin-bottom: 20px; font-weight: bold;">ПОРАЖЕНИЕ</h2>
+        <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.2); border-radius: 15px;">
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 18px;">
+                <span>Счет:</span>
+                <span style="font-weight: bold;">${this.score}</span>
             </div>
-            <div class="modal-buttons">
-                <button class="modal-btn modal-btn-primary" id="defeatNewGameBtn">Новая игра</button>
-                <button class="modal-btn modal-btn-secondary" id="defeatBuyMovesBtn">Купить ходы</button>
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 18px;">
+                <span>Цель:</span>
+                <span style="font-weight: bold;">${this.goal}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 18px;">
+                <span>Жизней осталось:</span>
+                <span style="font-weight: bold;">❤️ ${this.lives}</span>
             </div>
         </div>
+        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
+            <button id="defeatNewGameBtn" style="padding: 12px 24px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; background: white; color: #667eea; cursor: pointer; transition: transform 0.2s;">
+                Новая игра
+            </button>
+            <button id="defeatBuyMovesBtn" style="padding: 12px 24px; font-size: 16px; font-weight: bold; border: 2px solid white; border-radius: 10px; background: rgba(255, 255, 255, 0.2); color: white; cursor: pointer; transition: transform 0.2s;">
+                Купить ходы (+10)
+            </button>
+        </div>
+    </div>
     `;
 
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        // Назначаем обработчики
-        document.getElementById('defeatNewGameBtn').addEventListener('click', () => {
-            this.removeModal();
-            this.unlockBoardAfterVictory();
-            this.newGame();
+        // Добавляем эффект наведения на кнопки
+        const btns = modal.querySelectorAll('button');
+        btns.forEach(btn => {
+            btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
+            btn.onmouseout = () => btn.style.transform = 'translateY(0)';
         });
 
-        document.getElementById('defeatBuyMovesBtn').addEventListener('click', () => {
-            this.removeModal();
-            this.unlockBoardAfterVictory();
-            this.buyMoves();
-        });
+        // Назначаем обработчики
+        const newGameBtn = document.getElementById('defeatNewGameBtn');
+        const buyMovesBtn = document.getElementById('defeatBuyMovesBtn');
+
+        if (newGameBtn) {
+            newGameBtn.addEventListener('click', () => {
+                console.log('New game from defeat modal');
+
+                // ОТНИМАЕМ ЖИЗНЬ только при новой игре
+                if (this.lives > 0) {
+                    this.lives--;
+                    this.updateUI();
+                    console.log('Life lost for new game! Remaining lives:', this.lives);
+
+                    // Запускаем таймер восстановления
+                    this.startLifeRestoreTimer();
+
+                    this.showMessage(`Потеряна жизнь! Осталось: ${this.lives}`, 'error');
+
+                    // Если после потери жизни осталось 0 жизней, показываем специальное сообщение
+                    if (this.lives === 0) {
+                        this.showMessage('Жизни закончились! Ожидайте восстановления...', 'error');
+                    }
+                }
+
+                this.removeModal();
+                this.unlockBoardAfterVictory();
+                this.newGame();
+            });
+        }
+
+        if (buyMovesBtn) {
+            buyMovesBtn.addEventListener('click', () => {
+                console.log('Buy moves from defeat modal');
+                this.removeModal();
+                // При покупке ходов жизнь НЕ отнимается
+                this.buyMovesOnDefeat();
+            });
+        }
+
+        console.log('Defeat modal shown');
+    }
+
+    // Метод для потери жизни при поражении
+    loseLife() {
+        if (this.lives > 0) {
+            this.lives--;
+            this.updateUI();
+
+            // Запускаем таймер восстановления
+            this.startLifeRestoreTimer();
+
+            this.showMessage(`Потеряна жизнь! Осталось: ${this.lives}`, 'error');
+
+            // Если после потери жизни осталось 0 жизней, блокируем игру до восстановления
+            if (this.lives === 0) {
+                this.gameActive = false;
+                this.disableBoardInteractions();
+                this.showMessage('Жизни закончились! Ожидайте восстановления...', 'error');
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    startLifeTimer() {
+        console.log('Starting life timer');
+
+        // Очищаем предыдущий таймер, если есть
+        if (this.lifeTimer) {
+            clearInterval(this.lifeTimer);
+        }
+
+        // Запускаем новый таймер (проверяем каждую секунду)
+        this.lifeTimer = setInterval(() => {
+            this.checkAndRestoreLives();
+        }, 1000);
+
+        console.log('Life timer started');
+    }
+
+    // Проверка и восстановление жизней
+    // Проверка и восстановление жизней
+    checkAndRestoreLives() {
+        console.log('Checking lives restoration...');
+
+        // Если жизней уже 5, ничего не делаем
+        if (this.lives >= 5) {
+            const timerEl = document.getElementById('lifeRestoreTimer');
+            if (timerEl) timerEl.style.display = 'none';
+            return;
+        }
+
+        // Получаем время ПОСЛЕДНЕЙ ПОТЕРИ жизни
+        let lastLossTime = localStorage.getItem('lastLifeRestore');
+        const currentTime = Date.now();
+
+        // Если нет сохраненного времени, сохраняем текущее и выходим
+        if (!lastLossTime) {
+            localStorage.setItem('lastLifeRestore', currentTime);
+            console.log('No last loss time, set to:', currentTime);
+            this.updateLifeRestoreTimer();
+            return;
+        }
+
+        // Вычисляем, сколько времени прошло с последней потери жизни
+        const timePassed = (currentTime - parseInt(lastLossTime)) / 1000; // в секундах
+        console.log(`Time passed since last loss: ${timePassed} seconds`);
+
+        // Время восстановления одной жизни (60 секунд)
+        const restoreInterval = 60;
+
+        // Восстанавливаем жизнь ТОЛЬКО если прошло достаточно времени
+        if (timePassed >= restoreInterval && this.lives < 5) {
+            // Восстанавливаем 1 жизнь
+            this.lives = Math.min(5, this.lives + 1);
+            console.log(`Restored 1 life. Current lives: ${this.lives}`);
+
+            // Обновляем время последней потери на текущее время
+            // Это важно для правильного отсчета следующей жизни
+            localStorage.setItem('lastLifeRestore', currentTime);
+            console.log(`Reset restore time to current: ${currentTime}`);
+
+            // Обновляем UI
+            this.updateUI();
+
+            // Показываем сообщение о восстановлении
+            this.showMessage(`Восстановлена 1 жизнь! Осталось: ${this.lives}`, 'success');
+
+            // Если игра была заблокирована из-за отсутствия жизней, разблокируем
+            if (this.lives > 0 && !this.gameActive && this.score < this.goal && this.moves > 0) {
+                this.unlockBoardAfterVictory();
+                this.gameActive = true;
+                this.isGameLost = false; // Сбрасываем флаг поражения
+                this.showMessage('Жизни восстановлены! Продолжайте игру!', 'success');
+            }
+        }
+
+        // Всегда обновляем таймер
+        this.updateLifeRestoreTimer();
+    }
+
+// Вспомогательный метод для склонения слова "жизнь"
+    getLifeWord(count) {
+        if (count === 1) return 'жизнь';
+        if (count >= 2 && count <= 4) return 'жизни';
+        return 'жизней';
+    }
+
+
+// Метод для принудительной проверки таймера при входе в игру
+    forceCheckLives() {
+        // Вызываем при загрузке игры
+        this.checkAndRestoreLives();
+
+        // Показываем время до следующего восстановления
+        this.updateLifeRestoreTimer();
+    }
+
+
+    // Обновление отображения таймера восстановления
+    updateLifeRestoreTimer() {
+        console.log('Updating life restore timer, lives:', this.lives);
+
+        if (this.lives >= 5) {
+            // Если жизни полные, скрываем таймер
+            const timerEl = document.getElementById('lifeRestoreTimer');
+            if (timerEl) timerEl.style.display = 'none';
+            return;
+        }
+
+        const lastLossTime = localStorage.getItem('lastLifeRestore');
+        if (!lastLossTime) {
+            // Если нет времени, устанавливаем текущее
+            const now = Date.now();
+            localStorage.setItem('lastLifeRestore', now);
+            const timerEl = document.getElementById('lifeRestoreTimer');
+            if (timerEl) {
+                timerEl.style.display = 'block';
+                timerEl.innerHTML = `⏱️ Следующая жизнь через: 1:00`;
+            }
+            return;
+        }
+
+        const currentTime = Date.now();
+        const timePassed = (currentTime - parseInt(lastLossTime)) / 1000;
+        const restoreInterval = 60;
+
+        // Вычисляем время до следующего восстановления
+        const timeToNextRestore = Math.max(0, restoreInterval - timePassed);
+        console.log(`Time to next restore: ${timeToNextRestore} seconds`);
+
+        // Если время до следующего восстановления 0 или меньше, вызываем проверку
+        if (timeToNextRestore <= 0) {
+            console.log('Time to restore <= 0, checking restoration...');
+            this.checkAndRestoreLives();
+            return;
+        }
+
+        // Обновляем отображение таймера в UI
+        const timerEl = document.getElementById('lifeRestoreTimer');
+        if (timerEl) {
+            timerEl.style.display = 'block';
+            const minutes = Math.floor(timeToNextRestore / 60);
+            const seconds = Math.floor(timeToNextRestore % 60);
+
+            // Добавляем иконку часов
+            timerEl.innerHTML = `⏱️ Следующая жизнь через: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            // Если жизней 0, показываем предупреждение
+            if (this.lives === 0) {
+                timerEl.style.color = '#ff6b6b';
+                timerEl.style.fontWeight = 'bold';
+            } else {
+                timerEl.style.color = '#666';
+                timerEl.style.fontWeight = 'normal';
+            }
+        }
+
+        // Продолжаем обновлять каждую секунду
+        if (this.lifeTimerUpdate) {
+            clearTimeout(this.lifeTimerUpdate);
+        }
+        this.lifeTimerUpdate = setTimeout(() => this.updateLifeRestoreTimer(), 1000);
     }
 
     // Метод для удаления модального окна
@@ -1183,13 +1531,20 @@ class Match3Game {
     }
 
     // Новая игра
+    // Новая игра
     newGame() {
         console.log('Starting new game, current gameActive =', this.gameActive);
+        console.log('Current lives:', this.lives);
+        console.log('Board size:', this.boardSize);
+        console.log('Resetting isGameLost flag');
 
         if (this.lives <= 0) {
             this.showMessage('Нет жизней! Подождите восстановления', 'error');
             return;
         }
+
+        // Сбрасываем флаг поражения
+        this.isGameLost = false;
 
         // Сбрасываем все флаги
         this.isProcessing = false;
@@ -1202,6 +1557,8 @@ class Match3Game {
         this.score = 0;
         this.moves = this.getMovesForSize();
         this.goal = this.getGoalForSize();
+
+        console.log('New game settings - moves:', this.moves, 'goal:', this.goal);
 
         // Рендерим
         this.render();
@@ -1219,21 +1576,28 @@ class Match3Game {
 
     // Получение количества ходов для размера поля
     getMovesForSize() {
-        const moves = { 6: 20, 8: 30, 10: 40 };
-        return moves[this.boardSize] || 30;
+        const movesMap = {
+            6: 5,
+            8: 30,
+            10: 40
+        };
+        const moves = movesMap[this.boardSize] || 30;
+        console.log(`Getting moves for size ${this.boardSize}: ${moves}`);
+        return moves;
     }
 
     // Получение цели для размера поля
     getGoalForSize() {
-        const goals = { 6: 500, 8: 1000, 10: 2500 };
-        return goals[this.boardSize] || 500;
+        const goalsMap = {
+            6: 800,
+            8: 1200,
+            10: 2000
+        };
+        const goal = goalsMap[this.boardSize] || 500;
+        console.log(`Getting goal for size ${this.boardSize}: ${goal}`);
+        return goal;
     }
 
-    // Таймер жизней
-    startLifeTimer() {
-        // Заглушка для таймера
-        console.log('Life timer started');
-    }
 
     // Показать сообщение
     showMessage(text, type = 'info') {
