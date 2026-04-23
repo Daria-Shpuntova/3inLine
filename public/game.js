@@ -24,10 +24,10 @@ class Match3Game {
         this.lives = 5;
         this.coins = 100;
         this.inventory = {
-            lightning: 0,
-            cross: 0,
-            bomb: 0,
-            rainbow: 0
+            lightning: 3,  // Добавляем бонусы для теста
+            cross: 3,
+            bomb: 3,
+            rainbow: 3
         };
 
         this.selectedCell = null;
@@ -496,6 +496,9 @@ class Match3Game {
             }
         }
 
+        // Обновляем счетчики бонусов
+        this.updateBonusCounters();
+
         boardElement.appendChild(grid);
         this.updateUI();
 
@@ -504,6 +507,19 @@ class Match3Game {
             setTimeout(() => this.dragDrop.init(), 100);
         }
     }
+
+    // Добавьте этот метод
+    updateBonusCounters() {
+        const bonusTypes = ['lightning', 'cross', 'bomb', 'rainbow'];
+
+        bonusTypes.forEach(type => {
+            const counter = document.getElementById(`${type}Count`);
+            if (counter) {
+                counter.textContent = this.inventory[type] || 0;
+            }
+        });
+    }
+
 
     // Обновление UI
     // Обновление UI
@@ -533,6 +549,9 @@ class Match3Game {
         if (crossCount) crossCount.textContent = this.inventory.cross || 0;
         if (bombCount) bombCount.textContent = this.inventory.bomb || 0;
         if (rainbowCount) rainbowCount.textContent = this.inventory.rainbow || 0;
+
+        // Обновляем счетчики бонусов
+        this.updateBonusCounters();
 
         // Вызываем отладку
         this.debug();
@@ -600,62 +619,62 @@ class Match3Game {
     }
 
     // Победа
-   // async processMatchChain() {
-   //     console.log('Starting match chain');
-   //     let hasMatches = true;
-   //     let chainLength = 0;
-   //     const maxChainLength = 10;
+    // async processMatchChain() {
+    //     console.log('Starting match chain');
+    //     let hasMatches = true;
+    //     let chainLength = 0;
+    //     const maxChainLength = 10;
 //
-   //     while (hasMatches && chainLength < maxChainLength) {
-   //         chainLength++;
+    //     while (hasMatches && chainLength < maxChainLength) {
+    //         chainLength++;
 //
-   //         const matches = this.boardSystem.findAllMatches();
+    //         const matches = this.boardSystem.findAllMatches();
 //
-   //         if (matches.length === 0) {
-   //             hasMatches = false;
-   //             break;
-   //         }
+    //         if (matches.length === 0) {
+    //             hasMatches = false;
+    //             break;
+    //         }
 //
-   //         console.log(`Chain ${chainLength}: found ${matches.length} matches`);
+    //         console.log(`Chain ${chainLength}: found ${matches.length} matches`);
 //
-   //         this.addScore(matches.length * 10 * chainLength);
+    //         this.addScore(matches.length * 10 * chainLength);
 //
-   //         // Проверяем победу ПОСЛЕ начисления очков
-   //         if (this.score >= this.goal) {
-   //             console.log('Victory condition met during chain!');
-   //             this.gameWon();
-   //             // Прерываем цепочку, если победили
-   //             this.matchChainInProgress = false;
-   //             this.isProcessing = false;
-   //             return;
-   //         }
+    //         // Проверяем победу ПОСЛЕ начисления очков
+    //         if (this.score >= this.goal) {
+    //             console.log('Victory condition met during chain!');
+    //             this.gameWon();
+    //             // Прерываем цепочку, если победили
+    //             this.matchChainInProgress = false;
+    //             this.isProcessing = false;
+    //             return;
+    //         }
 //
-   //         await this.animateAndClearMatches(matches);
-   //         this.boardSystem.applyGravity();
-   //         this.boardSystem.fillEmptyCells();
-   //         this.softUpdate();
+    //         await this.animateAndClearMatches(matches);
+    //         this.boardSystem.applyGravity();
+    //         this.boardSystem.fillEmptyCells();
+    //         this.softUpdate();
 //
-   //         await new Promise(resolve => setTimeout(resolve, 200));
-   //     }
+    //         await new Promise(resolve => setTimeout(resolve, 200));
+    //     }
 //
-   //     console.log('Match chain completed');
-   //     this.matchChainInProgress = false;
-   //     this.isProcessing = false;
+    //     console.log('Match chain completed');
+    //     this.matchChainInProgress = false;
+    //     this.isProcessing = false;
 //
-   //     this.selectedCell = null;
-   //     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+    //     this.selectedCell = null;
+    //     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
 //
-   //     if (!this.hasAnyPossibleMove()) {
-   //         console.log('No possible moves, shuffling...');
-   //         this.showMessage('Нет ходов! Перемешиваем...', 'info');
-   //         this.shuffleBoard();
-   //     } else {
-   //         this.gameActive = true;
-   //     }
+    //     if (!this.hasAnyPossibleMove()) {
+    //         console.log('No possible moves, shuffling...');
+    //         this.showMessage('Нет ходов! Перемешиваем...', 'info');
+    //         this.shuffleBoard();
+    //     } else {
+    //         this.gameActive = true;
+    //     }
 //
-   //     // Финальная проверка статуса
-   //     this.checkGameStatus();
-   // }
+    //     // Финальная проверка статуса
+    //     this.checkGameStatus();
+    // }
 //
     playVictorySound() {
         // Создаем простой звук с помощью Web Audio API
@@ -879,17 +898,17 @@ class Match3Game {
 
 
     // Новый метод для скрытия сообщения о победе
-  //  hideVictoryMessage() {
-  //      const messageEl = document.getElementById('gameMessage');
-  //      if (messageEl) {
-  //          messageEl.innerHTML = '';
-  //          messageEl.className = 'game-message';
-  //      }
+    //  hideVictoryMessage() {
+    //      const messageEl = document.getElementById('gameMessage');
+    //      if (messageEl) {
+    //          messageEl.innerHTML = '';
+    //          messageEl.className = 'game-message';
+    //      }
 //
-  //      // Удаляем конфетти
-  //      const confetti = document.querySelectorAll('.confetti-piece');
-  //      confetti.forEach(piece => piece.remove());
-  //  }
+    //      // Удаляем конфетти
+    //      const confetti = document.querySelectorAll('.confetti-piece');
+    //      confetti.forEach(piece => piece.remove());
+    //  }
 
 // Новый метод для создания конфетти
     createConfetti(count = 50) {
@@ -1641,14 +1660,45 @@ class Match3Game {
         }
 
         // Бонусы
+        // Бонусы
         document.querySelectorAll('.bonus-card').forEach(card => {
-            card.onclick = () => {
+            // Удаляем старые обработчики
+            card.onclick = null;
+            card.removeEventListener('click', card._bonusHandler);
+
+            // Создаем новый обработчик
+            card._bonusHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
                 const bonusType = card.dataset.bonus;
+                console.log('Bonus card clicked:', bonusType);
+
                 if (bonusType) {
                     this.useBonus(bonusType);
                 }
             };
+
+            card.addEventListener('click', card._bonusHandler);
         });
+
+        // Правый клик для отмены бонуса
+        document.addEventListener('contextmenu', (e) => {
+            if (this.bonusSystem && this.bonusSystem.bonusMode) {
+                e.preventDefault();
+                this.bonusSystem.cancelBonus();
+                this.showMessage('Режим бонуса отменен', 'info');
+            }
+        });
+
+
+
+    }
+
+    isValidPosition(x, y) {
+        return x >= 0 && x < this.boardSize &&
+            y >= 0 && y < this.boardSize &&
+            this.board[y] !== undefined;
     }
 
     // Покупка ходов
@@ -1665,23 +1715,100 @@ class Match3Game {
     }
 
     // Использование бонуса (заглушка)
+    // Использование бонуса
     useBonus(type) {
+        console.log('Game.useBonus:', type);
+
         if (!this.gameActive) {
             this.showMessage('Игра не активна', 'error');
-            return;
+            return false;
         }
 
-        if (this.inventory[type] <= 0) {
-            this.showMessage('Нет бонуса', 'error');
-            return;
+        if (this.isProcessing || this.matchChainInProgress) {
+            this.showMessage('Подождите завершения анимации', 'error');
+            return false;
         }
 
-        if (!this.selectedCell) {
-            this.showMessage('Выберите клетку', 'error');
-            return;
+        if (this.lives <= 0) {
+            this.showMessage('Нет жизней!', 'error');
+            return false;
         }
 
-        this.showMessage(`Бонус ${type} активирован`, 'success');
+        // Проверяем наличие бонуса
+        const count = this.inventory[type] || 0;
+        console.log('Inventory:', type, '=', count);
+
+        if (count <= 0) {
+            this.bonusSystem.buyBonus(type);
+            return false;
+        }
+
+        // Если бонус уже активен, отменяем
+        if (this.bonusSystem.bonusMode && this.bonusSystem.activeBonus === type) {
+            this.bonusSystem.cancelBonus();
+            return false;
+        }
+
+        // Активируем режим бонуса
+        const activated = this.bonusSystem.activateBonus(type);
+
+        if (activated) {
+            this.setupBonusClickHandler();
+        }
+
+        return activated;
+    }
+
+
+    // Обработчик кликов для бонусов
+    setupBonusClickHandler() {
+        console.log('Setting up bonus click handler');
+
+        // Удаляем старые обработчики
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            cell.removeEventListener('click', this.bonusClickHandler);
+            cell.removeEventListener('click', this._bonusClickWrapper);
+        });
+
+        // Создаем новый обработчик
+        this.bonusClickHandler = (e) => {
+            if (!this.bonusSystem || !this.bonusSystem.bonusMode) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Ищем cell элемент
+            let cell = e.target;
+            while (cell && !cell.classList.contains('cell')) {
+                cell = cell.parentElement;
+            }
+
+            if (!cell) return;
+
+            // Пробуем получить координаты разными способами
+            let x = parseInt(cell.dataset.x);
+            let y = parseInt(cell.dataset.y);
+
+            // Если не нашли через dataset.x/y, пробуем через col/row
+            if (isNaN(x) || isNaN(y)) {
+                x = parseInt(cell.dataset.col);
+                y = parseInt(cell.dataset.row);
+            }
+
+            console.log('Bonus click at:', x, y);
+
+            if (!isNaN(x) && !isNaN(y)) {
+                this.bonusSystem.useBonus(x, y);
+            }
+        };
+
+        // Добавляем обработчик
+        cells.forEach(cell => {
+            cell.addEventListener('click', this.bonusClickHandler);
+        });
     }
 }
 

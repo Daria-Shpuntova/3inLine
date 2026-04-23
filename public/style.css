@@ -1199,3 +1199,121 @@ body {
         transform: translateY(-20px);
     }
 }
+
+
+/* Стили для активного бонуса */
+.bonus-card.bonus-active {
+    border-color: gold !important;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6) !important;
+    transform: scale(1.05);
+    animation: bonusPulse 1s infinite;
+}
+
+@keyframes bonusPulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        transform: scale(1.05);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+        transform: scale(1.1);
+    }
+}
+
+/* Улучшенный вид бонусов */
+.bonuses {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.bonus-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #e0e0e0;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.bonus-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #667eea;
+}
+
+.bonus-card:active {
+    transform: translateY(0);
+}
+
+.bonus-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    transition: transform 0.3s ease;
+}
+
+.bonus-card:hover .bonus-icon {
+    transform: scale(1.2) rotate(10deg);
+}
+
+.bonus-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.bonus-count {
+    font-size: 22px;
+    font-weight: bold;
+    color: #667eea;
+    margin: 5px 0;
+}
+
+.bonus-price {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #f6d365, #fda085);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Модальное окно для выбора направления молнии */
+.bonus-direction-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    z-index: 10000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    gap: 15px;
+}
+
+.direction-btn {
+    padding: 15px 25px;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+.direction-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: scale(1.05);
+}

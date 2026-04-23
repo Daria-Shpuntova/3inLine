@@ -19,6 +19,24 @@
       <div id="lifeRestoreTimer" style="display: block; font-size: 12px; color: #666; margin-top: 5px;"></div>
     </div>
   </div>
+  <div style="text-align: center; margin: 10px 0;">
+    <button onclick="function giveTestBonuses() {
+      if (window.game) {
+        window.game.inventory = {
+            lightning: 5,
+            cross: 5,
+            bomb: 5,
+            rainbow: 5
+        };
+        window.game.updateUI();
+        window.game.showMessage('Тестовые бонусы добавлены!', 'success');
+    }
+    }
+    giveTestBonuses()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
+      🎁 Дать тестовые бонусы
+    </button>
+  </div>
+
   <div class="theme-selector">
     <button class="theme-btn" data-theme="forest">🌲 Лес</button>
     <button class="theme-btn" data-theme="space">🚀 Космос</button>
@@ -58,27 +76,40 @@
       <div class="bonus-icon">⚡</div>
       <div class="bonus-name">Молния</div>
       <div class="bonus-count" id="lightningCount">0</div>
-      <div class="bonus-price">150</div>
+      <div class="bonus-price">150 🪙</div>
+      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
+        Уничтожает ряд
+      </div>
     </div>
     <div class="bonus-card" data-bonus="cross">
-      <div class="bonus-icon">⚡⚡</div>
+      <div class="bonus-icon">✚</div>
       <div class="bonus-name">Крест</div>
       <div class="bonus-count" id="crossCount">0</div>
-      <div class="bonus-price">250</div>
+      <div class="bonus-price">250 🪙</div>
+      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
+        Ряд и колонка
+      </div>
     </div>
     <div class="bonus-card" data-bonus="bomb">
       <div class="bonus-icon">💣</div>
       <div class="bonus-name">Бомба</div>
       <div class="bonus-count" id="bombCount">0</div>
-      <div class="bonus-price">100</div>
+      <div class="bonus-price">100 🪙</div>
+      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
+        Область 3x3
+      </div>
     </div>
     <div class="bonus-card" data-bonus="rainbow">
       <div class="bonus-icon">🌈</div>
       <div class="bonus-name">Радуга</div>
       <div class="bonus-count" id="rainbowCount">0</div>
-      <div class="bonus-price">200</div>
+      <div class="bonus-price">200 🪙</div>
+      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
+        Все одного цвета
+      </div>
     </div>
   </div>
+
 
   <!-- Кнопки действий -->
   <div class="game-actions">
