@@ -34,8 +34,10 @@ class BonusSystem {
         this.bonusMode = false;
     }
 
-    // Покупка бонуса
+    // Покупка бонуса - это метод BonusSystem
     async buyBonus(type) {
+        console.log('BonusSystem.buyBonus:', type);
+
         const bonus = this.bonuses[type];
         if (!bonus) {
             this.game.showMessage('Неизвестный бонус', 'error');
@@ -47,16 +49,16 @@ class BonusSystem {
             return false;
         }
 
-        // Покупаем через API
-        if (this.game.api) {
-            const result = await this.game.api.buyBonus(type, bonus.price);
-            if (!result.success) {
-                this.game.showMessage('Ошибка покупки', 'error');
-                return false;
+        // Пробуем купить через API, но если API недоступен - покупаем локально
+        if (this.game.api && this.game.api.playerId) {
+            try {
+                await this.game.api.buyBonus(type, bonus.price);
+            } catch (error) {
+                console.warn('API unavailable, buying locally:', error);
             }
         }
 
-        // Списываем монеты
+        // Всегда выполняем локальную покупку
         this.game.coins -= bonus.price;
 
         // Добавляем в инвентарь
@@ -86,10 +88,9 @@ class BonusSystem {
         }
 
         const count = this.game.inventory[type] || 0;
-        console.log('Bonus count:', count);
 
         if (count <= 0) {
-            this.buyBonus(type);
+            this.game.showMessage(`Нет бонусов типа "${type}"`, 'error');
             return false;
         }
 
@@ -184,8 +185,6 @@ class BonusSystem {
             return false;
         }
 
-        console.log('Destroyed cells count:', destroyed.length);
-
         if (destroyed.length > 0) {
             // Тратим бонус
             this.game.inventory[type]--;
@@ -232,13 +231,9 @@ class BonusSystem {
 
     // Молния - уничтожает строку
     activateLightning(x, y) {
-        console.log('=== LIGHTNING ===');
-        console.log('Position:', x, y);
-
         const destroyed = [];
         const boardSize = this.game.boardSize;
 
-        // Уничтожаем всю строку
         for (let i = 0; i < boardSize; i++) {
             if (this.game.board[y] && this.game.board[y][i] !== undefined &&
                 this.game.board[y][i] !== -1) {
@@ -247,18 +242,14 @@ class BonusSystem {
             }
         }
 
-        console.log('Lightning destroyed:', destroyed.length);
         return destroyed;
     }
 
     // Крест - уничтожает строку и столбец
     activateCross(centerX, centerY) {
-        console.log('=== CROSS ===');
-        console.log('Position:', centerX, centerY);
-
         const destroyed = [];
         const boardSize = this.game.boardSize;
-        const processed = new Set(); // Чтобы не дублировать центральную клетку
+        const processed = new Set();
 
         // Горизонтальная линия
         for (let x = 0; x < boardSize; x++) {
@@ -286,15 +277,11 @@ class BonusSystem {
             }
         }
 
-        console.log('Cross destroyed:', destroyed.length);
         return destroyed;
     }
 
     // Бомба - уничтожает область 3x3
     activateBomb(centerX, centerY) {
-        console.log('=== BOMB ===');
-        console.log('Position:', centerX, centerY);
-
         const destroyed = [];
         const radius = 1;
         const boardSize = this.game.boardSize;
@@ -306,11 +293,9 @@ class BonusSystem {
 
                 if (newX >= 0 && newX < boardSize &&
                     newY >= 0 && newY < boardSize) {
-
                     if (this.game.board[newY] &&
                         this.game.board[newY][newX] !== undefined &&
                         this.game.board[newY][newX] !== -1) {
-
                         destroyed.push({ x: newX, y: newY });
                         this.game.board[newY][newX] = -1;
                     }
@@ -318,15 +303,11 @@ class BonusSystem {
             }
         }
 
-        console.log('Bomb destroyed:', destroyed.length);
         return destroyed;
     }
 
     // Радуга - уничтожает все кристаллы одного цвета
     activateRainbow(targetColor) {
-        console.log('=== RAINBOW ===');
-        console.log('Target color:', targetColor);
-
         const destroyed = [];
         const boardSize = this.game.boardSize;
 
@@ -339,18 +320,14 @@ class BonusSystem {
             }
         }
 
-        console.log('Rainbow destroyed:', destroyed.length);
         return destroyed;
     }
 
     // Отмена бонуса
     cancelBonus() {
-        console.log('Canceling bonus');
-
         this.bonusMode = false;
         this.activeBonus = null;
 
-        // Убираем подсветку
         document.querySelectorAll('.bonus-card').forEach(card => {
             card.classList.remove('bonus-active');
             card.style.border = '2px solid #e0e0e0';
@@ -358,7 +335,6 @@ class BonusSystem {
             card.style.transform = '';
         });
 
-        // Возвращаем обычный курсор
         document.querySelectorAll('.cell').forEach(cell => {
             cell.style.cursor = '';
         });
@@ -382,10 +358,4 @@ class BonusSystem {
     }
 }
 
-// Экспортируем класс
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BonusSystem;
-}
-
-// Делаем доступным глобально
 window.BonusSystem = BonusSystem;

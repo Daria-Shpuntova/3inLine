@@ -1317,3 +1317,86 @@ body {
     color: white;
     transform: scale(1.05);
 }
+
+
+/* Кнопка покупки бонуса */
+.bonus-buy-btn {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.bonus-buy-btn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bonus-buy-btn:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+.bonus-card:hover .bonus-buy-btn {
+    opacity: 1;
+}
+
+.bonus-buy-btn .buy-icon {
+    margin-right: 3px;
+}
+
+/* Анимация покупки */
+.bonus-buy-icon {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.bonus-buy-icon:hover {
+    transform: scale(1.2);
+    background: #4CAF50;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.bonus-card:hover .bonus-buy-icon {
+    opacity: 1;
+}
+
+/* Анимация встряхивания при ошибке */
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}

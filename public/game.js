@@ -67,6 +67,17 @@ class Match3Game {
                 await this.loadGameState();
             }
 
+            // ДАЕМ МОНЕТЫ ДЛЯ ТЕСТИРОВАНИЯ
+            this.coins = 10000; // Много монет для тестов
+
+            // ДАЕМ ТЕСТОВЫЕ БОНУСЫ
+            this.inventory = {
+                lightning: 3,
+                cross: 3,
+                bomb: 3,
+                rainbow: 3
+            };
+
             // Создаем поле
             this.createBoard();
 
@@ -100,6 +111,19 @@ class Match3Game {
         console.log('Creating board with size:', this.boardSize);
         this.board = this.boardSystem.createBoard(this.boardSize);
         console.log('Board created:', this.board);
+    }
+
+    // В классе Match3Game добавьте метод для безопасного API запроса
+    async safeApiCall(apiFunction, ...args) {
+        try {
+            if (this.api && this.api.playerId) {
+                return await apiFunction.apply(this.api, args);
+            }
+            return { success: true, local: true };
+        } catch (error) {
+            console.warn('API call failed, using local:', error);
+            return { success: true, local: true };
+        }
     }
 
     async loadGameState() {
@@ -1633,6 +1657,7 @@ class Match3Game {
     }
 
     // Настройка обработчиков событий
+    // В классе Match3Game замените setupEventListeners
     setupEventListeners() {
         console.log('Setting up event listeners');
 
@@ -1642,7 +1667,6 @@ class Match3Game {
                 document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 this.boardSize = parseInt(e.target.dataset.size);
-                console.log('Board size changed to:', this.boardSize);
                 this.newGame();
             };
         });
@@ -1659,18 +1683,34 @@ class Match3Game {
             buyMovesBtn.onclick = () => this.buyMoves();
         }
 
-        // Бонусы
-        // Бонусы
-        document.querySelectorAll('.bonus-card').forEach(card => {
-            // Удаляем старые обработчики
-            card.onclick = null;
-            card.removeEventListener('click', card._bonusHandler);
-
-            // Создаем новый обработчик
-            card._bonusHandler = (e) => {
+        // Кнопки покупки бонусов
+        document.querySelectorAll('.bonus-buy-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
+                const bonusType = btn.dataset.bonus;
+                console.log('Buy button clicked for:', bonusType);
+
+                if (bonusType) {
+                    this.buyBonus(bonusType);
+                }
+            });
+
+            btn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Карточки бонусов
+        document.querySelectorAll('.bonus-card').forEach(card => {
+            card.onclick = (e) => {
+                // Игнорируем клик по кнопке покупки
+                if (e.target.closest('.bonus-buy-btn')) {
+                    return;
+                }
+
+                e.preventDefault();
                 const bonusType = card.dataset.bonus;
                 console.log('Bonus card clicked:', bonusType);
 
@@ -1678,8 +1718,6 @@ class Match3Game {
                     this.useBonus(bonusType);
                 }
             };
-
-            card.addEventListener('click', card._bonusHandler);
         });
 
         // Правый клик для отмены бонуса
@@ -1690,10 +1728,59 @@ class Match3Game {
                 this.showMessage('Режим бонуса отменен', 'info');
             }
         });
-
-
-
     }
+
+    async buyBonus(type) {
+        console.log('Match3Game.buyBonus called for:', type);
+
+        // Анимируем кнопку
+        const buyBtn = document.querySelector(`.bonus-buy-btn[data-bonus="${type}"]`);
+        if (buyBtn) {
+            buyBtn.style.background = 'linear-gradient(135deg, #f6d365, #fda085)';
+            buyBtn.innerHTML = '⏳ Покупка...';
+        }
+
+        // Вызываем покупку через BonusSystem
+        const result = await this.bonusSystem.buyBonus(type);
+
+        if (result) {
+            // Показываем эффект на карточке
+            const card = document.querySelector(`.bonus-card[data-bonus="${type}"]`);
+            if (card) {
+                card.style.transform = 'scale(1.1)';
+                card.style.borderColor = '#4CAF50';
+                card.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
+
+                setTimeout(() => {
+                    card.style.transform = '';
+                    card.style.borderColor = '';
+                    card.style.boxShadow = '';
+                }, 300);
+            }
+
+            // Обновляем кнопку
+            if (buyBtn) {
+                buyBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                buyBtn.innerHTML = '<span class="buy-icon">🛒</span> Купить';
+            }
+        } else {
+            // Встряхиваем кнопку при ошибке
+            if (buyBtn) {
+                buyBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5253)';
+                buyBtn.innerHTML = '❌ Ошибка';
+                buyBtn.style.animation = 'shake 0.5s ease';
+
+                setTimeout(() => {
+                    buyBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                    buyBtn.innerHTML = '<span class="buy-icon">🛒</span> Купить';
+                    buyBtn.style.animation = '';
+                }, 1000);
+            }
+        }
+
+        return result;
+    }
+
 
     isValidPosition(x, y) {
         return x >= 0 && x < this.boardSize &&
@@ -1714,8 +1801,9 @@ class Match3Game {
         this.updateUI();
     }
 
-    // Использование бонуса (заглушка)
-    // Использование бонуса
+
+    // В классе Match3Game замените метод useBonus
+    // В классе Match3Game замените метод useBonus
     useBonus(type) {
         console.log('Game.useBonus:', type);
 
@@ -1739,13 +1827,15 @@ class Match3Game {
         console.log('Inventory:', type, '=', count);
 
         if (count <= 0) {
-            this.bonusSystem.buyBonus(type);
+            // Нет бонуса - пробуем купить
+            this.showMessage(`Нет бонусов. Нажмите кнопку "Купить" для покупки`, 'info');
             return false;
         }
 
         // Если бонус уже активен, отменяем
         if (this.bonusSystem.bonusMode && this.bonusSystem.activeBonus === type) {
             this.bonusSystem.cancelBonus();
+            this.showMessage(`Бонус "${type}" отменен`, 'info');
             return false;
         }
 

@@ -35,6 +35,11 @@
     giveTestBonuses()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
       🎁 Дать тестовые бонусы
     </button>
+
+    <button onclick="if(window.game){ window.game.coins = 10000; window.game.inventory = { lightning: 5, cross: 5, bomb: 5, rainbow: 5 }; window.game.updateUI(); window.game.showMessage('Бонусы и монеты добавлены!', 'success'); }"
+            style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
+      🎁 Дать тестовые бонусы и монеты
+    </button>
   </div>
 
   <div class="theme-selector">
@@ -71,42 +76,47 @@
   </div>
 
   <!-- Бонусы -->
+  <!-- Бонусы -->
   <div class="bonuses">
     <div class="bonus-card" data-bonus="lightning">
       <div class="bonus-icon">⚡</div>
       <div class="bonus-name">Молния</div>
       <div class="bonus-count" id="lightningCount">0</div>
       <div class="bonus-price">150 🪙</div>
-      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
-        Уничтожает ряд
-      </div>
+      <div class="bonus-description">Уничтожает ряд</div>
+      <button class="bonus-buy-btn" data-bonus="lightning" title="Купить молнию">
+        <span class="buy-icon">🛒</span> Купить
+      </button>
     </div>
     <div class="bonus-card" data-bonus="cross">
       <div class="bonus-icon">✚</div>
       <div class="bonus-name">Крест</div>
       <div class="bonus-count" id="crossCount">0</div>
       <div class="bonus-price">250 🪙</div>
-      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
-        Ряд и колонка
-      </div>
+      <div class="bonus-description">Ряд и колонка</div>
+      <button class="bonus-buy-btn" data-bonus="cross" title="Купить крест">
+        <span class="buy-icon">🛒</span> Купить
+      </button>
     </div>
     <div class="bonus-card" data-bonus="bomb">
       <div class="bonus-icon">💣</div>
       <div class="bonus-name">Бомба</div>
       <div class="bonus-count" id="bombCount">0</div>
       <div class="bonus-price">100 🪙</div>
-      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
-        Область 3x3
-      </div>
+      <div class="bonus-description">Область 3x3</div>
+      <button class="bonus-buy-btn" data-bonus="bomb" title="Купить бомбу">
+        <span class="buy-icon">🛒</span> Купить
+      </button>
     </div>
     <div class="bonus-card" data-bonus="rainbow">
       <div class="bonus-icon">🌈</div>
       <div class="bonus-name">Радуга</div>
       <div class="bonus-count" id="rainbowCount">0</div>
       <div class="bonus-price">200 🪙</div>
-      <div class="bonus-description" style="font-size: 10px; color: #666; margin-top: 5px;">
-        Все одного цвета
-      </div>
+      <div class="bonus-description">Все одного цвета</div>
+      <button class="bonus-buy-btn" data-bonus="rainbow" title="Купить радугу">
+        <span class="buy-icon">🛒</span> Купить
+      </button>
     </div>
   </div>
 
