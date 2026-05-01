@@ -140,10 +140,10 @@ class Match3Game {
     }
 
     // ИСПРАВЛЕННЫЙ метод trySwap
+    // В классе Match3Game полностью замените trySwap
     trySwap(x1, y1, x2, y2) {
         console.log('trySwap called:', x1, y1, '->', x2, y2, 'gameActive=', this.gameActive);
 
-        // Проверяем, можно ли обменивать
         if (this.animations?.isAnimating) {
             console.log('Animating, cannot swap');
             return false;
@@ -170,6 +170,9 @@ class Match3Game {
             return false;
         }
 
+        // СБРАСЫВАЕМ линии ДО проверки, чтобы hasMatchesAfterSwap не накапливал мусор
+        this.boardSystem.resetTurnLines();
+
         // Проверяем, приведет ли обмен к совпадениям
         if (!this.boardSystem.hasMatchesAfterSwap(x1, y1, x2, y2)) {
             this.showMessage('Нет совпадений!', 'error');
@@ -190,15 +193,17 @@ class Match3Game {
 
         // Анимируем обмен
         this.animations.animateSwap(x1, y1, x2, y2, () => {
-            // После анимации начинаем обработку совпадений
             this.processMatchChain();
         });
 
         return true;
     }
 
-    // ИСПРАВЛЕННЫЙ метод processMatchChain
+    // В методе processMatchChain, после нахождения совпадений добавьте:
 
+    // В классе Match3Game замените processMatchChain
+    // В классе Match3Game полностью замените processMatchChain
+    // В классе Match3Game замените processMatchChain
     async processMatchChain() {
         console.log('Starting match chain');
         let hasMatches = true;
@@ -208,7 +213,6 @@ class Match3Game {
         while (hasMatches && chainLength < maxChainLength) {
             chainLength++;
 
-            // Находим все совпадения
             const matches = this.boardSystem.findAllMatches();
 
             if (matches.length === 0) {
@@ -218,32 +222,24 @@ class Match3Game {
 
             console.log(`Chain ${chainLength}: found ${matches.length} matches`);
 
-            // Начисляем очки
+            // Начисляем ВСЕ бонусы (и линии, и специальные)
+            this.processAllBonuses();
+
             this.addScore(matches.length * 10 * chainLength);
 
-            // ПРОВЕРКА ПОБЕДЫ ПОСЛЕ КАЖДОГО НАЧИСЛЕНИЯ ОЧКОВ
             if (this.score >= this.goal) {
-                console.log('Victory condition met during chain! Score:', this.score, 'Goal:', this.goal);
-                await this.animateAndClearMatches(matches); // Завершаем текущие совпадения
+                await this.animateAndClearMatches(matches);
                 this.matchChainInProgress = false;
                 this.isProcessing = false;
-                this.gameWon(); // Вызываем победу
-                return; // ВАЖНО: выходим из метода
+                this.gameWon();
+                return;
             }
 
-            // Анимируем уничтожение
             await this.animateAndClearMatches(matches);
-
-            // Применяем гравитацию к данным
             this.boardSystem.applyGravity();
-
-            // Заполняем пустоты новыми кристаллами
             this.boardSystem.fillEmptyCells();
-
-            // Обновляем визуально
             this.softUpdate();
 
-            // Небольшая пауза для визуального восприятия
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
@@ -251,24 +247,197 @@ class Match3Game {
         this.matchChainInProgress = false;
         this.isProcessing = false;
 
-        // Снимаем выделение
+        if (chainLength >= 5) {
+            this.inventory.bomb = (this.inventory.bomb || 0) + 1;
+            this.showMessage('💣 Бомба за каскад из ' + chainLength + ' комбинаций!', 'success');
+        } else if (chainLength >= 3) {
+            this.coins += chainLength * 50;
+            this.showMessage(`💰 +${chainLength * 50} монет за каскад!`, 'success');
+        }
+
+        this.updateUI();
         this.selectedCell = null;
         document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
 
-        // Проверяем наличие возможных ходов
         if (!this.hasAnyPossibleMove()) {
-            console.log('No possible moves, shuffling...');
             this.showMessage('Нет ходов! Перемешиваем...', 'info');
             this.shuffleBoard();
         } else {
-            // Важно! Убеждаемся, что игра снова активна
             this.gameActive = true;
         }
 
-        // Финальная проверка статуса (если еще не победили)
         if (this.score < this.goal) {
             this.checkGameStatus();
         }
+    }
+
+// Единый метод для всех бонусов
+    processAllBonuses() {
+        if (!this.boardSystem.lastMatchDetails) return;
+
+        const details = this.boardSystem.lastMatchDetails;
+        const specials = details.filter(d => d.isSpecial);
+        const lines = details.filter(d => d.isLine && !d.isSpecial);
+        const awarded = new Set();
+
+        // Специальные комбинации
+        for (const s of specials) {
+            if (awarded.size >= 2) break;
+            if (awarded.has(s.bonusType)) continue;
+
+            let msg = s.type === 'L-shape' ? '💣 Бомба за L-комбинацию!' : '✚ Крест за T-комбинацию!';
+            this.inventory[s.bonusType] = (this.inventory[s.bonusType] || 0) + 1;
+            awarded.add(s.bonusType);
+            this.showFloatingBonusMessage(msg, s.centerX, s.centerY);
+            console.log('🎁', msg);
+        }
+
+        // Линии по длине
+        for (const l of lines) {
+            if (awarded.size >= 2) break;
+
+            let type = null, msg = '';
+            if (l.length >= 6) { type = 'rainbow'; msg = `🌈 Радуга за ${l.length} в ряд!`; }
+            else if (l.length === 5) { type = 'rainbow'; msg = '🌈 Радуга за 5 в ряд!'; }
+            else if (l.length === 4) { type = 'lightning'; msg = '⚡ Молния за 4 в ряд!'; }
+
+            if (type && !awarded.has(type)) {
+                this.inventory[type] = (this.inventory[type] || 0) + 1;
+                awarded.add(type);
+                this.showFloatingBonusMessage(msg, l.centerX, l.centerY);
+                console.log('🎁', msg);
+            }
+        }
+
+        if (awarded.size > 0) this.updateUI();
+    }
+
+    // В классе Match3Game добавьте методы
+
+// Начисление бонусов за длину линий (во время цепочки)
+    processLineBonuses() {
+        if (!this.boardSystem.lastMatchDetails) return;
+
+        const lines = this.boardSystem.lastMatchDetails.filter(d => d.isLine && !d.isSpecial);
+        if (lines.length === 0) return;
+
+        for (const line of lines) {
+            let bonusType = null;
+            let msg = '';
+
+            if (line.length >= 6) {
+                bonusType = 'rainbow';
+                msg = `🌈 Радуга за ${line.length} в ряд!`;
+            } else if (line.length === 5) {
+                bonusType = 'rainbow';
+                msg = '🌈 Радуга за 5 в ряд!';
+            } else if (line.length === 4) {
+                bonusType = 'lightning';
+                msg = '⚡ Молния за 4 в ряд!';
+            }
+
+            if (bonusType) {
+                this.inventory[bonusType] = (this.inventory[bonusType] || 0) + 1;
+                console.log('  🎁 Line bonus:', bonusType, msg);
+                // Показываем сообщение сразу
+                this.showFloatingBonusMessage(msg, line.centerX, line.centerY);
+            }
+        }
+
+        this.updateUI();
+    }
+
+// Проверка L/T комбинаций ПОСЛЕ цепочки
+    processSpecialBonuses() {
+        const allLines = this.boardSystem._turnLines;
+        if (!allLines || allLines.length < 2) {
+            console.log('❌ Not enough lines for special combos (need 2+)');
+            return;
+        }
+
+        console.log('🔍 Checking special combos among', allLines.length, 'lines:');
+        allLines.forEach((l, i) => {
+            console.log(`  Line ${i}: ${l.type} color=${l.color} [${l.startX},${l.startY}]-[${l.endX},${l.endY}] positions:`,
+                l.positions.map(p => `(${p.x},${p.y})`).join(' '));
+        });
+
+        console.log('🔍 Checking special combos among', allLines.length, 'lines');
+        console.log('  H:', allLines.filter(l => l.type === 'horizontal').length,
+            'V:', allLines.filter(l => l.type === 'vertical').length);
+
+        // Группируем по цвету
+        const byColor = {};
+        for (const line of allLines) {
+            if (!byColor[line.color]) byColor[line.color] = [];
+            byColor[line.color].push(line);
+        }
+
+        const awardedTypes = new Set();
+
+        for (const color in byColor) {
+            const lines = byColor[color];
+            const hLines = lines.filter(l => l.type === 'horizontal');
+            const vLines = lines.filter(l => l.type === 'vertical');
+
+            if (hLines.length === 0 || vLines.length === 0) continue;
+
+            // Ищем пересечения по позициям
+            for (const h of hLines) {
+                for (const v of vLines) {
+                    for (const hPos of h.positions) {
+                        for (const vPos of v.positions) {
+                            if (hPos.x === vPos.x && hPos.y === vPos.y) {
+                                const ix = hPos.x;
+                                const iy = hPos.y;
+
+                                const hEnd = (ix === h.startX || ix === h.endX);
+                                const vEnd = (iy === v.startY || iy === v.endY);
+
+                                if (hEnd && vEnd && !awardedTypes.has('bomb')) {
+                                    // L-shape
+                                    this.inventory.bomb = (this.inventory.bomb || 0) + 1;
+                                    awardedTypes.add('bomb');
+                                    console.log('🎉 L-SHAPE! Awarded BOMB');
+                                    this.showFloatingBonusMessage('💣 Бомба за L-комбинацию!', ix, iy);
+                                    this.showMessage('💣 Бомба за L-комбинацию!', 'success');
+                                } else if ((hEnd || vEnd) && !awardedTypes.has('cross')) {
+                                    // T-shape
+                                    this.inventory.cross = (this.inventory.cross || 0) + 1;
+                                    awardedTypes.add('cross');
+                                    console.log('🎉 T-SHAPE! Awarded CROSS');
+                                    this.showFloatingBonusMessage('✚ Крест за T-комбинацию!', ix, iy);
+                                    this.showMessage('✚ Крест за T-комбинацию!', 'success');
+                                }
+
+                                if (awardedTypes.size >= 2) {
+                                    this.updateUI();
+                                    this.boardSystem.resetTurnLines();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (awardedTypes.size > 0) {
+            this.updateUI();
+        } else {
+            console.log('❌ No special combos found');
+        }
+
+        // Сбрасываем линии
+        this.boardSystem.resetTurnLines();
+    }
+
+    isBoardEmpty() {
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                if (this.board[y][x] !== -1) return false;
+            }
+        }
+        return true;
     }
 
     // Также добавим метод для принудительного сброса анимации
@@ -1779,6 +1948,137 @@ class Match3Game {
         }
 
         return result;
+    }
+
+    // В классе Match3Game добавьте метод
+    processBonusRewards() {
+        if (!this.boardSystem.lastMatchDetails || this.boardSystem.lastMatchDetails.length === 0) {
+            return;
+        }
+
+        const details = this.boardSystem.lastMatchDetails;
+        const bonusesToAward = [];
+        const awardedTypes = new Set();
+
+        // Разделяем на специальные и обычные
+        const specials = details.filter(d => d.isSpecial);
+        const lines = details.filter(d => d.isLine && !d.isSpecial);
+
+        console.log('📋 Processing:', 'Special:', specials.length, '| Lines:', lines.length);
+
+        // 1. Специальные комбинации (ПРИОРИТЕТ)
+        for (const s of specials) {
+            if (bonusesToAward.length >= 2) break;
+            if (awardedTypes.has(s.bonusType)) continue;
+
+            let msg = '';
+            if (s.type === 'L-shape') {
+                msg = '💣 Бомба за L-комбинацию!';
+            } else if (s.type === 'T-shape') {
+                msg = '✚ Крест за T-комбинацию!';
+            }
+
+            if (msg) {
+                awardedTypes.add(s.bonusType);
+                bonusesToAward.push({
+                    type: s.bonusType,
+                    message: msg,
+                    position: { x: s.centerX, y: s.centerY }
+                });
+                console.log('  ✅ Special:', s.type, '->', s.bonusType);
+            }
+        }
+
+        // 2. Обычные линии (по длине)
+        const longLines = lines.filter(l => l.length >= 4).sort((a, b) => b.length - a.length);
+        for (const line of longLines) {
+            if (bonusesToAward.length >= 2) break;
+
+            let bonusType = null;
+            let msg = '';
+
+            if (line.length >= 6) {
+                bonusType = 'rainbow';
+                msg = `🌈 Радуга за ${line.length} в ряд!`;
+            } else if (line.length === 5) {
+                bonusType = 'rainbow';
+                msg = '🌈 Радуга за 5 в ряд!';
+            } else if (line.length === 4) {
+                bonusType = 'lightning';
+                msg = '⚡ Молния за 4 в ряд!';
+            }
+
+            if (bonusType && !awardedTypes.has(bonusType)) {
+                awardedTypes.add(bonusType);
+                bonusesToAward.push({
+                    type: bonusType,
+                    message: msg,
+                    position: { x: line.centerX, y: line.centerY }
+                });
+                console.log('  ✅ Line bonus:', bonusType, 'length:', line.length);
+            }
+        }
+
+        // 3. Начисляем
+        if (bonusesToAward.length > 0) {
+            bonusesToAward.forEach((award, index) => {
+                this.inventory[award.type] = (this.inventory[award.type] || 0) + 1;
+                setTimeout(() => {
+                    this.showFloatingBonusMessage(award.message, award.position.x, award.position.y);
+                }, index * 600);
+            });
+            this.updateUI();
+            setTimeout(() => {
+                this.showMessage('🎁 ' + bonusesToAward.map(a => a.message).join(' | '), 'success');
+            }, 800);
+            console.log('🏆 Awarded:', bonusesToAward.length, 'bonuses');
+        } else {
+            console.log('❌ No bonuses awarded');
+        }
+
+        this.boardSystem.lastMatchDetails = null;
+       // this.boardSystem.resetTurnLines();
+    }
+
+// Добавьте метод для показа всплывающего сообщения о бонусе
+    // В классе Match3Game добавьте метод
+    showFloatingBonusMessage(message, x, y) {
+        const board = document.getElementById('gameBoard');
+        if (!board) return;
+
+        // Находим клетку по координатам
+        const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+        if (!cell) return;
+
+        const cellRect = cell.getBoundingClientRect();
+        const boardRect = board.getBoundingClientRect();
+
+        const floatingMsg = document.createElement('div');
+        floatingMsg.className = 'bonus-reward-message';
+        floatingMsg.textContent = message;
+        floatingMsg.style.cssText = `
+        position: absolute;
+        left: ${cellRect.left - boardRect.left + cellRect.width / 2}px;
+        top: ${cellRect.top - boardRect.top}px;
+        transform: translate(-50%, -100%);
+        background: linear-gradient(135deg, #f6d365, #fda085);
+        color: #333;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 8px 16px;
+        border-radius: 20px;
+        white-space: nowrap;
+        z-index: 2000;
+        pointer-events: none;
+        animation: bonusRewardFloat 2s ease-out forwards;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    `;
+
+        board.appendChild(floatingMsg);
+
+        setTimeout(() => {
+            if (floatingMsg.parentNode) floatingMsg.remove();
+        }, 2000);
     }
 
 
